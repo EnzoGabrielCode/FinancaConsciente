@@ -153,6 +153,62 @@ Abaixo está o mapeamento técnico completo exigido para o escopo do projeto (Do
 
 ---
 
+## 🚀 Como rodar o projeto
+
+O repositório é um monorepo com duas pastas:
+
+```
+backend/   API REST em Node.js + Express + SQLite (Clean Architecture)
+mobile/    App React Native 0.73 para Android (API 21+), SQLite local e Material Design 3
+```
+
+### Backend (API)
+
+Pré-requisitos: Node.js 20 ou superior.
+
+```bash
+cd backend
+npm install
+cp .env.example .env      # edite o JWT_SECRET
+npm run dev               # sobe em http://localhost:3333/api
+npm test                  # roda os testes
+```
+
+Rotas disponíveis:
+
+| Método | Rota                 | Descrição                                  |
+|--------|----------------------|--------------------------------------------|
+| GET    | `/api/health`        | Verifica se a API está no ar               |
+| POST   | `/api/auth/register` | Cadastra usuário (senha salva com Bcrypt)  |
+| POST   | `/api/auth/login`    | Faz login e devolve um token JWT           |
+| GET    | `/api/me`            | Rota protegida: exige `Authorization: Bearer <token>` |
+
+Camadas em `backend/src`: `domain` (entidades e regras), `application` (casos de uso), `infrastructure` (SQLite, Bcrypt, JWT) e `interfaces/http` (rotas, controllers e middlewares). A montagem de tudo fica em `main/container.js`.
+
+> Em produção a API deve rodar atrás de HTTPS (TLS). O `helmet` já envia o cabeçalho `Strict-Transport-Security`.
+
+### Mobile (Android)
+
+Pré-requisitos: Node.js 18+, JDK 17 e Android Studio com um emulador ou celular conectado ([guia oficial de ambiente](https://reactnative.dev/docs/0.73/environment-setup)).
+
+```bash
+cd mobile
+npm install
+npm start                 # terminal 1: Metro bundler
+npm run android           # terminal 2: instala e abre o app
+npm test                  # testes com Jest
+```
+
+O app usa React Native **0.73**, a última versão que ainda suporta Android 5.0 (API 21), como pede o RNF08. O banco local fica em `src/data/database` (as migrações ficam em `migrations.ts`) e o tema Material 3 claro/escuro em `src/presentation/theme`.
+
+### Fluxo Git (Git Flow)
+
+* `main`: versões entregues
+* `develop`: integração das sprints
+* `feature/<item>`: uma branch por User Story, com PR para `develop`
+
+---
+
 ## ✅ Definition of Done (Critérios de Aceitação Gerais)
 Todas as User Stories desenvolvidas devem obedecer aos seguintes critérios para serem consideradas concluídas:
 1. Valores monetários devem ser tratados e impedidos de serem negativos.

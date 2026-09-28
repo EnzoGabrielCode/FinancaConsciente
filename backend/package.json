@@ -1,0 +1,27 @@
+{
+  "name": "financaconsciente-api",
+  "version": "0.1.0",
+  "private": true,
+  "description": "API REST do FinançaConsciente (Node.js + Express)",
+  "main": "src/main/server.js",
+  "scripts": {
+    "start": "node src/main/server.js",
+    "dev": "node --watch src/main/server.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "better-sqlite3": "^13.0.3",
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.4",
+    "express": "^5.2.1",
+    "helmet": "^8.3.0",
+    "jsonwebtoken": "^9.0.3"
+  },
+  "devDependencies": {
+    "supertest": "^7.3.0"
+  }
+}
