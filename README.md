@@ -153,6 +153,96 @@ Abaixo está o mapeamento técnico completo exigido para o escopo do projeto (Do
 
 ---
 
+## 🚀 Como rodar o projeto
+
+O repositório é um monorepo com duas aplicações:
+
+```
+FinancaConsciente/
+├── backend/   API REST (Node.js + Express + SQLite)
+└── mobile/    App Android (React Native 0.73 + TypeScript + SQLite local)
+```
+
+Ambas seguem a **Clean Architecture**:
+
+| Projeto | Camada | Pasta |
+|---|---|---|
+| backend | Domínio (entidades e erros) | `src/domain` |
+| backend | Casos de uso | `src/application/usecases` |
+| backend | Infraestrutura (SQLite, Bcrypt, JWT) | `src/infrastructure` |
+| backend | Interface HTTP (rotas, controllers, middlewares) | `src/interfaces/http` |
+| backend | Configuração e composition root | `src/main` |
+| mobile | Entidades | `src/domain/entities` |
+| mobile | Banco local e migrações | `src/data/database` |
+| mobile | Telas, hooks e tema MD3 | `src/presentation` |
+
+### Backend
+
+Pré-requisito: **Node.js 20+**.
+
+```bash
+cd backend
+npm install
+cp .env.example .env   # edite o JWT_SECRET (mínimo 32 caracteres)
+npm start              # ou: npm run dev (reinicia ao salvar)
+npm test               # testes com node --test + supertest (banco em memória)
+```
+
+Variáveis do `.env`:
+
+| Variável | Descrição | Padrão |
+|---|---|---|
+| `PORT` | Porta HTTP | `3000` |
+| `JWT_SECRET` | Segredo de assinatura dos tokens (obrigatório, ≥ 32 caracteres) | — |
+| `JWT_EXPIRES_IN` | Validade do token (`15m`, `1h`, `7d`...) | `1h` |
+| `DATABASE_PATH` | Arquivo SQLite (a pasta é criada automaticamente) | `./data/financaconsciente.db` |
+| `BCRYPT_ROUNDS` | Custo do Bcrypt (10 a 15) | `12` |
+
+Rotas da API:
+
+| Método | Rota | Autenticação | Descrição |
+|---|---|---|---|
+| `GET` | `/api/health` | — | Verifica se a API está no ar |
+| `POST` | `/api/auth/register` | — | Cadastra usuário `{ name, email, password }`. Senha com no mínimo 8 caracteres, salva com Bcrypt. E-mail duplicado retorna `409` |
+| `POST` | `/api/auth/login` | — | Recebe `{ email, password }` e retorna `{ token, tokenType, expiresIn, user }` |
+| `GET` | `/api/me` | `Authorization: Bearer <token>` | Retorna o usuário autenticado (sem token: `401`) |
+
+> **HTTPS estrito (RNF03):** a API envia o cabeçalho `Strict-Transport-Security` (via Helmet). Em produção ela deve ser publicada atrás de TLS (proxy reverso ou certificado próprio).
+
+### Mobile (Android)
+
+Pré-requisitos: Node.js 20+, JDK 17, Android SDK (platform 34) e um emulador ou aparelho com Android 5.0+ (API 21, `minSdkVersion` em `mobile/android/build.gradle`).
+
+```bash
+cd mobile
+npm install
+npm start              # Metro bundler (deixe rodando)
+npm run android        # em outro terminal: compila e instala no emulador/aparelho
+
+npm test               # Jest
+npx tsc --noEmit       # checagem de tipos
+npm run lint           # ESLint
+```
+
+O app usa **react-native-paper** (Material Design 3) com tema claro/escuro seguindo o sistema e **react-native-sqlite-storage** como banco local offline-first. As migrações ficam em `src/data/database/migrations.ts` e são controladas pelo `PRAGMA user_version`: para alterar o schema, adicione uma nova migração com a próxima versão (nunca edite uma já publicada).
+
+### Fluxo Git Flow (RNF09)
+
+| Branch | Uso |
+|---|---|
+| `main` | Código estável/entregue. Só recebe merge de `develop` (releases) ou `hotfix/*` |
+| `develop` | Integração da sprint em andamento |
+| `feature/<item>` | Uma branch por item do backlog, criada a partir de `develop` (ex.: `feature/RNF-Setup`, `feature/us-1.1-cadastro-renda`) |
+
+```bash
+git checkout develop && git pull
+git checkout -b feature/us-1.1-cadastro-renda
+# ... commits ...
+git push -u origin feature/us-1.1-cadastro-renda   # abra o PR para develop
+```
+
+---
+
 ## ✅ Definition of Done (Critérios de Aceitação Gerais)
 Todas as User Stories desenvolvidas devem obedecer aos seguintes critérios para serem consideradas concluídas:
 1. Valores monetários devem ser tratados e impedidos de serem negativos.
