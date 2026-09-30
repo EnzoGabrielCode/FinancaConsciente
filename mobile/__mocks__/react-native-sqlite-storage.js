@@ -1,6 +1,7 @@
 function createMockDatabase({userVersion = 0} = {}) {
   const db = {
     userVersion,
+    lastInsertId: 0,
     executed: [],
     run(sql) {
       db.executed.push(sql);
@@ -11,9 +12,11 @@ function createMockDatabase({userVersion = 0} = {}) {
       const rows = /^PRAGMA user_version$/i.test(sql)
         ? [{user_version: db.userVersion}]
         : [];
+      const insertId = /^\s*INSERT/i.test(sql) ? ++db.lastInsertId : undefined;
       return {
         rows: {length: rows.length, item: i => rows[i], raw: () => rows},
         rowsAffected: 0,
+        insertId,
       };
     },
     executeSql: jest.fn(async sql => [db.run(sql)]),
