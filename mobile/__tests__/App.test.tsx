@@ -13,5 +13,5 @@ it('abre o banco local e mostra que ele está pronto', async () => {
 
   const status = tree!.root.findByProps({testID: 'database-status'});
   const text = [status.props.children].flat().join('');
-  expect(text).toBe('Banco pronto (schema v1)');
+  expect(text).toBe('Banco pronto (schema v2)');
 });

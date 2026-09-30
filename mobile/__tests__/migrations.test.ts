@@ -68,4 +68,25 @@ describe('runMigrations', () => {
     expect(createTable).toMatch(/valor_centavos >= 0/);
     expect(createTable).toMatch(/tipo IN \('receita', 'despesa'\)/);
   });
+
+  it('a migração v2 adiciona categoria e recorrência sem alterar a v1', async () => {
+    const v2 = MIGRATIONS[1];
+    expect(v2.version).toBe(2);
+    expect(v2.statements).toEqual([
+      "ALTER TABLE transacoes ADD COLUMN categoria TEXT NOT NULL DEFAULT 'outros'",
+      "ALTER TABLE transacoes ADD COLUMN recorrencia TEXT NOT NULL DEFAULT 'variavel' CHECK (recorrencia IN ('fixa', 'variavel'))",
+    ]);
+    expect(MIGRATIONS[0].statements.join('\n')).not.toMatch(
+      /categoria|recorrencia/,
+    );
+
+    const db = createDb(1);
+    await expect(runMigrations(db)).resolves.toBe(2);
+    expect(db.userVersion).toBe(2);
+    expect(db.executed).toEqual([
+      'PRAGMA user_version',
+      ...v2.statements,
+      'PRAGMA user_version = 2',
+    ]);
+  });
 });

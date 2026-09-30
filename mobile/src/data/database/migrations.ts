@@ -25,6 +25,14 @@ export const MIGRATIONS: Migration[] = [
       'CREATE INDEX IF NOT EXISTS idx_transacoes_sincronizado ON transacoes (sincronizado)',
     ],
   },
+  {
+    version: 2,
+    description: 'Adiciona categoria e recorrência às transações',
+    statements: [
+      "ALTER TABLE transacoes ADD COLUMN categoria TEXT NOT NULL DEFAULT 'outros'",
+      "ALTER TABLE transacoes ADD COLUMN recorrencia TEXT NOT NULL DEFAULT 'variavel' CHECK (recorrencia IN ('fixa', 'variavel'))",
+    ],
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;
