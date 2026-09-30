@@ -1,9 +1,3 @@
-/* eslint-env jest */
-/**
- * Mock mínimo do react-native-sqlite-storage para o Jest. Simula um banco
- * em memória que só entende PRAGMA user_version; os demais comandos são
- * apenas registrados em `executed` para inspeção nos testes.
- */
 function createMockDatabase({userVersion = 0} = {}) {
   const db = {
     userVersion,

@@ -7,7 +7,6 @@ export type DatabaseState =
   | {status: 'pronto'; schemaVersion: number}
   | {status: 'erro'; message: string};
 
-/** Abre o banco local e expõe o estado da inicialização para a UI. */
 export function useDatabase(): DatabaseState & {retry: () => void} {
   const [state, setState] = useState<DatabaseState>({status: 'carregando'});
   const [attempt, setAttempt] = useState(0);

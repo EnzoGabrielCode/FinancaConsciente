@@ -1,9 +1,5 @@
 import {MD3DarkTheme, MD3LightTheme, type MD3Theme} from 'react-native-paper';
 
-/**
- * Temas Material Design 3 (RNF05). Parte da paleta base do Paper e troca a
- * cor primária por tons de verde (semente #006E1C), gerados no padrão M3.
- */
 export const lightTheme: MD3Theme = {
   ...MD3LightTheme,
   colors: {
@@ -26,7 +22,6 @@ export const darkTheme: MD3Theme = {
   },
 };
 
-/** Tema que acompanha o modo claro/escuro do sistema (RF56). */
 export function themeFor(colorScheme: string | null | undefined): MD3Theme {
   return colorScheme === 'dark' ? darkTheme : lightTheme;
 }

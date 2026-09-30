@@ -6,11 +6,6 @@ export interface Migration {
   statements: string[];
 }
 
-/**
- * Migrações versionadas do banco local. A versão aplicada fica em
- * PRAGMA user_version. Nunca altere uma migração já publicada:
- * crie uma nova com a próxima versão.
- */
 export const MIGRATIONS: Migration[] = [
   {
     version: 1,
@@ -39,12 +34,6 @@ export async function getSchemaVersion(db: SQLiteDatabase): Promise<number> {
   return result.rows.item(0).user_version as number;
 }
 
-/**
- * Aplica, em ordem, as migrações com versão maior que a atual.
- * Cada migração roda em sua própria transação junto com a atualização
- * do user_version, então uma falha não deixa o schema pela metade.
- * Retorna a versão final do schema.
- */
 export async function runMigrations(
   db: SQLiteDatabase,
   migrations: Migration[] = MIGRATIONS,

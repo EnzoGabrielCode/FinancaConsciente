@@ -23,14 +23,10 @@ async function open(): Promise<DatabaseInfo> {
   return {db, schemaVersion};
 }
 
-/**
- * Abre o banco local (uma única vez por execução do app) e aplica as
- * migrações pendentes. Chamadas concorrentes recebem a mesma conexão.
- */
 export function getDatabase(): Promise<DatabaseInfo> {
   if (!connection) {
     connection = open().catch(error => {
-      connection = null; // permite tentar de novo
+      connection = null;
       throw error;
     });
   }
