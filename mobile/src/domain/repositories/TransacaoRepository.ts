@@ -1,0 +1,9 @@
+import type {DadosTransacao, Transacao} from '../entities/Transacao';
+
+export interface TransacaoRepository {
+  listarRecentes(limite: number): Promise<Transacao[]>;
+  criar(dados: DadosTransacao): Promise<number>;
+  atualizar(id: number, dados: DadosTransacao): Promise<void>;
+  excluir(id: number): Promise<void>;
+  totalReceitasDoMes(anoMes: string): Promise<number>;
+}
