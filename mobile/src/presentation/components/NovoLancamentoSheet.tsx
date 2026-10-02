@@ -1,6 +1,7 @@
 import React, {useEffect, useState} from 'react';
 import {
   ActivityIndicator,
+  Image,
   Modal,
   Pressable,
   ScrollView,
@@ -13,12 +14,15 @@ import {
   Chip,
   HelperText,
   Icon,
+  Menu,
   Portal,
   Snackbar,
   TextInput,
 } from 'react-native-paper';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
 import {categoriasDo} from '../../domain/categorias';
+import {validarImagemComprovante} from '../../domain/comprovante';
 import {hojeISO} from '../../domain/datas';
 import {
   aplicarTecla,
@@ -38,6 +42,10 @@ import {
   validarTransacao,
   type ErrosTransacao,
 } from '../../domain/validacao/validarTransacao';
+import {
+  seletorImagemPadrao,
+  type SeletorImagem,
+} from '../servicos/seletorImagem';
 import {CORES, FONTE_MONO, comAlfa, corDoTipo} from '../theme/cores';
 import {mensagemDeErro} from '../utils/mensagemDeErro';
 import ConfirmarExclusaoDialog from './ConfirmarExclusaoDialog';
@@ -48,7 +56,10 @@ interface Props {
   onFechar: () => void;
   onSalvar: (dados: DadosTransacao) => Promise<void>;
   onExcluir?: (id: number) => Promise<void>;
+  seletorImagem?: SeletorImagem;
 }
+
+type OrigemMenu = 'camera' | 'trocar';
 
 const TECLAS: Tecla[][] = [
   ['1', '2', '3'],
@@ -68,10 +79,12 @@ function NovoLancamentoSheet({
   onFechar,
   onSalvar,
   onExcluir,
+  seletorImagem = seletorImagemPadrao,
 }: Props): React.JSX.Element {
   const emEdicao = Boolean(transacao);
+  const insets = useSafeAreaInsets();
 
-  const [tipo, setTipo] = useState<TipoTransacao>('receita');
+  const [tipo, setTipo] = useState<TipoTransacao>('despesa');
   const [valor, setValor] = useState('');
   const [recorrencia, setRecorrencia] = useState<Recorrencia>('variavel');
   const [categoria, setCategoria] = useState<string | null>(null);
@@ -81,12 +94,16 @@ function NovoLancamentoSheet({
   const [confirmandoExclusao, setConfirmandoExclusao] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
   const [mensagemErro, setMensagemErro] = useState<string | null>(null);
+  const [comprovanteUri, setComprovanteUri] = useState<string | null>(null);
+  const [miniaturaFalhou, setMiniaturaFalhou] = useState(false);
+  const [menuAberto, setMenuAberto] = useState<OrigemMenu | null>(null);
+  const [visualizando, setVisualizando] = useState(false);
 
   useEffect(() => {
     if (!visivel) {
       return;
     }
-    setTipo(transacao?.tipo ?? 'receita');
+    setTipo(transacao?.tipo ?? 'despesa');
     setValor(transacao ? centavosParaDigitado(transacao.valorCentavos) : '');
     setRecorrencia(transacao?.recorrencia ?? 'variavel');
     setCategoria(transacao?.categoria ?? null);
@@ -96,6 +113,10 @@ function NovoLancamentoSheet({
     setConfirmandoExclusao(false);
     setExcluindo(false);
     setMensagemErro(null);
+    setComprovanteUri(transacao?.comprovanteUri ?? null);
+    setMiniaturaFalhou(false);
+    setMenuAberto(null);
+    setVisualizando(false);
   }, [visivel, transacao]);
 
   const ocupado = salvando || excluindo;
@@ -109,8 +130,55 @@ function NovoLancamentoSheet({
     if (categoria && !categoriasDo(novo).some(c => c.id === categoria)) {
       setCategoria(null);
     }
+    if (novo === 'receita') {
+      setComprovanteUri(null);
+    }
     setErros({});
   };
+
+  const anexarComprovante = async (origem: 'camera' | 'galeria') => {
+    setMenuAberto(null);
+    try {
+      const imagem =
+        origem === 'camera'
+          ? await seletorImagem.tirarFoto()
+          : await seletorImagem.escolherDaGaleria();
+      if (!imagem) {
+        return;
+      }
+      const erro = validarImagemComprovante(imagem);
+      if (erro) {
+        setMensagemErro(erro);
+        return;
+      }
+      setComprovanteUri(imagem.uri);
+      setMiniaturaFalhou(false);
+    } catch (erro) {
+      setMensagemErro(mensagemDeErro(erro));
+    }
+  };
+
+  const removerComprovante = () => {
+    setComprovanteUri(null);
+    setMiniaturaFalhou(false);
+  };
+
+  const itensMenuComprovante = (
+    <>
+      <Menu.Item
+        leadingIcon="camera"
+        title="Tirar foto"
+        onPress={() => anexarComprovante('camera')}
+        testID="menu-tirar-foto"
+      />
+      <Menu.Item
+        leadingIcon="image"
+        title="Escolher da galeria"
+        onPress={() => anexarComprovante('galeria')}
+        testID="menu-galeria"
+      />
+    </>
+  );
 
   const pressionarTecla = (tecla: Tecla) => {
     setValor(atual => aplicarTecla(atual, tecla));
@@ -131,7 +199,7 @@ function NovoLancamentoSheet({
       descricao,
       data: transacao?.data ?? hojeISO(),
       recorrencia: tipo === 'receita' ? recorrencia : 'variavel',
-      comprovanteUri: transacao?.comprovanteUri ?? null,
+      comprovanteUri: tipo === 'despesa' ? comprovanteUri : null,
     });
     if (!resultado.valido) {
       setErros(resultado.erros);
@@ -230,18 +298,38 @@ function NovoLancamentoSheet({
 
               <View>
                 <Text style={styles.rotulo}>VALOR</Text>
-                <View style={styles.linhaValor}>
-                  <Text style={styles.moeda}>R$</Text>
-                  <Text
-                    style={[styles.valor, {color: corTipo}]}
-                    numberOfLines={1}
-                    adjustsFontSizeToFit
-                    accessibilityLabel={`Valor: ${formatarDigitado(
-                      valor,
-                    )} reais`}
-                    testID="valor-display">
-                    {formatarDigitado(valor)}
-                  </Text>
+                <View style={styles.linhaValorAcoes}>
+                  <View style={styles.linhaValor}>
+                    <Text style={styles.moeda}>R$</Text>
+                    <Text
+                      style={[styles.valor, {color: corTipo}]}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                      accessibilityLabel={`Valor: ${formatarDigitado(
+                        valor,
+                      )} reais`}
+                      testID="valor-display">
+                      {formatarDigitado(valor)}
+                    </Text>
+                  </View>
+                  {tipo === 'despesa' && (
+                    <Menu
+                      visible={menuAberto === 'camera'}
+                      onDismiss={() => setMenuAberto(null)}
+                      anchor={
+                        <Pressable
+                          onPress={() => setMenuAberto('camera')}
+                          disabled={ocupado}
+                          accessibilityRole="button"
+                          accessibilityLabel="Anexar comprovante"
+                          testID="botao-camera"
+                          style={styles.botaoCamera}>
+                          <Icon source="camera" size={18} color={CORES.azul} />
+                        </Pressable>
+                      }>
+                      {itensMenuComprovante}
+                    </Menu>
+                  )}
                 </View>
                 {erros.valorCentavos && (
                   <HelperText type="error">{erros.valorCentavos}</HelperText>
@@ -348,6 +436,64 @@ function NovoLancamentoSheet({
                 )}
               </View>
 
+              {tipo === 'despesa' && comprovanteUri && (
+                <View testID="comprovante-anexado">
+                  <Text style={styles.rotuloSecao}>Comprovante</Text>
+                  <View style={styles.linhaComprovante}>
+                    {miniaturaFalhou ? (
+                      <View
+                        style={[styles.miniatura, styles.miniaturaQuebrada]}
+                        testID="comprovante-quebrado">
+                        <Icon
+                          source="image-broken-variant"
+                          size={22}
+                          color={CORES.textoSecundario}
+                        />
+                      </View>
+                    ) : (
+                      <Pressable
+                        onPress={() => setVisualizando(true)}
+                        accessibilityRole="imagebutton"
+                        accessibilityLabel="Ver comprovante"
+                        testID="comprovante-miniatura">
+                        <Image
+                          source={{uri: comprovanteUri}}
+                          style={styles.miniatura}
+                          onError={() => setMiniaturaFalhou(true)}
+                          testID="comprovante-imagem"
+                        />
+                      </Pressable>
+                    )}
+                    <Text style={styles.textoComprovante} numberOfLines={2}>
+                      {miniaturaFalhou ? 'Comprovante não encontrado' : ''}
+                    </Text>
+                    <Menu
+                      visible={menuAberto === 'trocar'}
+                      onDismiss={() => setMenuAberto(null)}
+                      anchor={
+                        <Button
+                          mode="text"
+                          textColor={CORES.azul}
+                          onPress={() => setMenuAberto('trocar')}
+                          disabled={ocupado}
+                          testID="comprovante-trocar">
+                          Trocar
+                        </Button>
+                      }>
+                      {itensMenuComprovante}
+                    </Menu>
+                    <Button
+                      mode="text"
+                      textColor={CORES.vermelho}
+                      onPress={removerComprovante}
+                      disabled={ocupado}
+                      testID="comprovante-remover">
+                      Remover
+                    </Button>
+                  </View>
+                </View>
+              )}
+
               <View style={styles.teclado}>
                 {TECLAS.map(linha => (
                   <View key={linha.join('')} style={styles.linhaTeclado}>
@@ -441,6 +587,34 @@ function NovoLancamentoSheet({
           onConfirmar={excluir}
         />
       </Portal.Host>
+
+      <Modal
+        visible={visualizando && comprovanteUri !== null}
+        animationType="fade"
+        onRequestClose={() => setVisualizando(false)}>
+        <View style={styles.visualizador} testID="visualizador-comprovante">
+          {comprovanteUri && (
+            <Image
+              source={{uri: comprovanteUri}}
+              style={styles.imagemCheia}
+              resizeMode="contain"
+              accessibilityLabel="Foto do comprovante"
+            />
+          )}
+          <Pressable
+            style={[
+              styles.botaoFechar,
+              styles.fecharVisualizador,
+              {top: insets.top + 16},
+            ]}
+            onPress={() => setVisualizando(false)}
+            accessibilityRole="button"
+            accessibilityLabel="Fechar comprovante"
+            testID="fechar-visualizador">
+            <Icon source="close" size={18} color={CORES.textoSecundario} />
+          </Pressable>
+        </View>
+      </Modal>
     </Modal>
   );
 }
@@ -516,10 +690,26 @@ const styles = StyleSheet.create({
     color: CORES.textoApagado,
     letterSpacing: 1,
   },
+  linhaValorAcoes: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
   linhaValor: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'baseline',
     gap: 8,
+  },
+  botaoCamera: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(100,181,246,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(100,181,246,0.25)',
   },
   moeda: {
     fontSize: 14,
@@ -563,6 +753,38 @@ const styles = StyleSheet.create({
   },
   descricao: {
     backgroundColor: CORES.superficie,
+  },
+  linhaComprovante: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  miniatura: {
+    width: 56,
+    height: 56,
+    borderRadius: 12,
+    backgroundColor: CORES.realce,
+  },
+  miniaturaQuebrada: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  textoComprovante: {
+    flex: 1,
+    fontSize: 12,
+    color: CORES.textoSecundario,
+  },
+  visualizador: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
+  imagemCheia: {
+    flex: 1,
+    width: '100%',
+  },
+  fecharVisualizador: {
+    position: 'absolute',
+    right: 16,
   },
   teclado: {
     gap: 8,
