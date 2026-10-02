@@ -33,6 +33,11 @@ export const MIGRATIONS: Migration[] = [
       "ALTER TABLE transacoes ADD COLUMN recorrencia TEXT NOT NULL DEFAULT 'variavel' CHECK (recorrencia IN ('fixa', 'variavel'))",
     ],
   },
+  {
+    version: 3,
+    description: 'Adiciona o caminho da foto do comprovante às transações',
+    statements: ['ALTER TABLE transacoes ADD COLUMN comprovante_uri TEXT'],
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

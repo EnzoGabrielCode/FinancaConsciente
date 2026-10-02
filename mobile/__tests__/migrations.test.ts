@@ -81,12 +81,34 @@ describe('runMigrations', () => {
     );
 
     const db = createDb(1);
-    await expect(runMigrations(db)).resolves.toBe(2);
+    await expect(runMigrations(db, MIGRATIONS.slice(0, 2))).resolves.toBe(2);
     expect(db.userVersion).toBe(2);
     expect(db.executed).toEqual([
       'PRAGMA user_version',
       ...v2.statements,
       'PRAGMA user_version = 2',
+    ]);
+  });
+
+  it('a migração v3 adiciona comprovante_uri (pode ser NULL) e um banco na v2 roda só a v3', async () => {
+    const v3 = MIGRATIONS[2];
+    expect(v3.version).toBe(3);
+    expect(v3.statements).toEqual([
+      'ALTER TABLE transacoes ADD COLUMN comprovante_uri TEXT',
+    ]);
+    expect(
+      MIGRATIONS.slice(0, 2)
+        .flatMap(m => m.statements)
+        .join('\n'),
+    ).not.toMatch(/comprovante/);
+
+    const db = createDb(2);
+    await expect(runMigrations(db)).resolves.toBe(3);
+    expect(db.userVersion).toBe(3);
+    expect(db.executed).toEqual([
+      'PRAGMA user_version',
+      ...v3.statements,
+      'PRAGMA user_version = 3',
     ]);
   });
 });
