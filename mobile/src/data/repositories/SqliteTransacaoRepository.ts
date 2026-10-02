@@ -11,11 +11,12 @@ interface LinhaTransacao {
   data: string;
   categoria: string;
   recorrencia: Transacao['recorrencia'];
+  comprovante_uri: string | null;
   sincronizado: number;
 }
 
 const COLUNAS =
-  'id, tipo, descricao, valor_centavos, data, categoria, recorrencia, sincronizado';
+  'id, tipo, descricao, valor_centavos, data, categoria, recorrencia, comprovante_uri, sincronizado';
 
 function paraTransacao(linha: LinhaTransacao): Transacao {
   return {
@@ -26,6 +27,7 @@ function paraTransacao(linha: LinhaTransacao): Transacao {
     data: linha.data,
     categoria: linha.categoria,
     recorrencia: linha.recorrencia,
+    comprovanteUri: linha.comprovante_uri ?? null,
     sincronizado: linha.sincronizado === 1,
   };
 }
@@ -43,7 +45,7 @@ export class SqliteTransacaoRepository implements TransacaoRepository {
 
   private async executar(
     sql: string,
-    parametros: (string | number)[] = [],
+    parametros: (string | number | null)[] = [],
   ): Promise<ResultSet> {
     const db = await this.obterBanco();
     const [resultado] = await db.executeSql(sql, parametros);
@@ -58,11 +60,21 @@ export class SqliteTransacaoRepository implements TransacaoRepository {
     return linhas<LinhaTransacao>(resultado).map(paraTransacao);
   }
 
+  async buscarPorId(id: number): Promise<Transacao | null> {
+    const resultado = await this.executar(
+      `SELECT ${COLUNAS} FROM transacoes WHERE id = ?`,
+      [id],
+    );
+    const [linha] = linhas<LinhaTransacao>(resultado);
+    return linha ? paraTransacao(linha) : null;
+  }
+
   async criar(dados: DadosTransacao): Promise<number> {
     const resultado = await this.executar(
       `INSERT INTO transacoes
-        (tipo, descricao, valor_centavos, data, categoria, recorrencia, sincronizado)
-        VALUES (?, ?, ?, ?, ?, ?, 0)`,
+        (tipo, descricao, valor_centavos, data, categoria, recorrencia,
+         comprovante_uri, sincronizado)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 0)`,
       [
         dados.tipo,
         dados.descricao,
@@ -70,6 +82,7 @@ export class SqliteTransacaoRepository implements TransacaoRepository {
         dados.data,
         dados.categoria,
         dados.recorrencia,
+        dados.comprovanteUri,
       ],
     );
     return resultado.insertId;
@@ -79,7 +92,8 @@ export class SqliteTransacaoRepository implements TransacaoRepository {
     await this.executar(
       `UPDATE transacoes
         SET tipo = ?, descricao = ?, valor_centavos = ?, data = ?,
-            categoria = ?, recorrencia = ?, sincronizado = 0
+            categoria = ?, recorrencia = ?, comprovante_uri = ?,
+            sincronizado = 0
         WHERE id = ?`,
       [
         dados.tipo,
@@ -88,6 +102,7 @@ export class SqliteTransacaoRepository implements TransacaoRepository {
         dados.data,
         dados.categoria,
         dados.recorrencia,
+        dados.comprovanteUri,
         id,
       ],
     );

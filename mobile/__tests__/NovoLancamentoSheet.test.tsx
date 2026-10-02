@@ -28,6 +28,10 @@ class RepositorioEmMemoria implements TransacaoRepository {
       .slice(0, limite),
   );
 
+  buscarPorId = jest.fn(
+    async (id: number) => this.transacoes.find(t => t.id === id) ?? null,
+  );
+
   criar = jest.fn(async (dados: DadosTransacao) => {
     const id = this.proximoId++;
     this.transacoes.push({...dados, id, sincronizado: false});
@@ -59,6 +63,7 @@ const despesa: Transacao = {
   data: '2026-09-28',
   categoria: 'alimentacao',
   recorrencia: 'variavel',
+  comprovanteUri: null,
   sincronizado: true,
 };
 

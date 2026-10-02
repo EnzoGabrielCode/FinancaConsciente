@@ -10,6 +10,7 @@ const valida: DadosTransacao = {
   descricao: 'Salário da empresa',
   data: '2026-09-30',
   recorrencia: 'fixa',
+  comprovanteUri: null,
 };
 
 describe('validarTransacao', () => {
@@ -63,5 +64,30 @@ describe('validarTransacao', () => {
     expect(
       validarTransacao({...valida, data: '30/09/2026'}).erros.data,
     ).toBeDefined();
+  });
+
+  it('recusa comprovante em receita', () => {
+    const resultado = validarTransacao({
+      ...valida,
+      comprovanteUri: 'file:///docs/comprovantes/a.jpg',
+    });
+    expect(resultado.valido).toBe(false);
+    expect(resultado.erros.comprovanteUri).toBe(
+      'Comprovante só pode ser anexado a despesas.',
+    );
+  });
+
+  it('aceita comprovante em despesa', () => {
+    const resultado = validarTransacao({
+      ...valida,
+      tipo: 'despesa',
+      categoria: 'alimentacao',
+      recorrencia: 'variavel',
+      comprovanteUri: 'file:///docs/comprovantes/a.jpg',
+    });
+    expect(resultado.valido).toBe(true);
+    expect(resultado.dados.comprovanteUri).toBe(
+      'file:///docs/comprovantes/a.jpg',
+    );
   });
 });
