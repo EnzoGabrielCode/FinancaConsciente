@@ -30,9 +30,7 @@ describe('FsArmazenamentoComprovantes', () => {
       '/data/cache/rn_image_picker_lib_temp_1.jpg',
       '/docs/comprovantes/comprovante-1727700000000.jpg',
     );
-    expect(uri).toBe(
-      'file:///docs/comprovantes/comprovante-1727700000000.jpg',
-    );
+    expect(uri).toBe('file:///docs/comprovantes/comprovante-1727700000000.jpg');
   });
 
   it('guardar mantém PNG, usa jpg por padrão e não recria a pasta existente', async () => {

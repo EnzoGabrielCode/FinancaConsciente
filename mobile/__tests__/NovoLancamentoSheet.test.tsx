@@ -9,8 +9,13 @@ import renderer, {
 } from 'react-test-renderer';
 
 import type {DadosTransacao, Transacao} from '../src/domain/entities/Transacao';
+import type {ArmazenamentoComprovantes} from '../src/domain/repositories/ArmazenamentoComprovantes';
 import type {TransacaoRepository} from '../src/domain/repositories/TransacaoRepository';
 import HomeScreen from '../src/presentation/screens/HomeScreen';
+import type {
+  ImagemSelecionada,
+  SeletorImagem,
+} from '../src/presentation/servicos/seletorImagem';
 import {darkTheme} from '../src/presentation/theme';
 
 class RepositorioEmMemoria implements TransacaoRepository {
@@ -55,6 +60,33 @@ class RepositorioEmMemoria implements TransacaoRepository {
   );
 }
 
+const PASTA = 'file:///docs/comprovantes/';
+
+class ArmazenamentoFake implements ArmazenamentoComprovantes {
+  guardar = jest.fn(
+    async (uri: string) => `${PASTA}${uri.split('/').pop() ?? 'foto.jpg'}`,
+  );
+
+  apagar = jest.fn(async (_uri: string) => {});
+
+  ehDefinitivo = (uri: string) => uri.startsWith(PASTA);
+}
+
+const FOTO: ImagemSelecionada = {
+  uri: 'file:///cache/foto.jpg',
+  tipoMime: 'image/jpeg',
+  tamanhoBytes: 300_000,
+};
+
+function criarSeletorFake(imagem: ImagemSelecionada | null = FOTO) {
+  return {
+    tirarFoto: jest.fn<SeletorImagem['tirarFoto']>(async () => imagem),
+    escolherDaGaleria: jest.fn<SeletorImagem['escolherDaGaleria']>(
+      async () => imagem,
+    ),
+  };
+}
+
 const despesa: Transacao = {
   id: 1,
   tipo: 'despesa',
@@ -69,11 +101,18 @@ const despesa: Transacao = {
 
 let tree: ReactTestRenderer;
 
+let armazenamento: ArmazenamentoFake;
+let seletor: ReturnType<typeof criarSeletorFake>;
+
 async function renderizar(repositorio: TransacaoRepository) {
   await act(async () => {
     tree = renderer.create(
       <PaperProvider theme={darkTheme}>
-        <HomeScreen repositorio={repositorio} />
+        <HomeScreen
+          repositorio={repositorio}
+          armazenamento={armazenamento}
+          seletorImagem={seletor}
+        />
       </PaperProvider>,
     );
   });
@@ -129,6 +168,8 @@ describe('NovoLancamentoSheet', () => {
   beforeEach(() => {
     jest.useFakeTimers();
     repositorio = new RepositorioEmMemoria();
+    armazenamento = new ArmazenamentoFake();
+    seletor = criarSeletorFake();
   });
 
   afterEach(async () => {
@@ -139,17 +180,17 @@ describe('NovoLancamentoSheet', () => {
     jest.useRealTimers();
   });
 
-  it('abre pelo + já em Receita', async () => {
+  it('abre pelo + já em Despesa', async () => {
     await renderizar(repositorio);
     expect(existe('novo-lancamento-sheet')).toBe(false);
 
     await tocar('botao-novo-lancamento');
 
     expect(textoDe(porId('sheet-titulo'))).toBe('Novo Lançamento');
-    expect(porId('tipo-receita').props.accessibilityState).toEqual({
+    expect(porId('tipo-despesa').props.accessibilityState).toEqual({
       selected: true,
     });
-    expect(existe('recorrencia-fixa')).toBe(true);
+    expect(existe('recorrencia-fixa')).toBe(false);
     expect(textoDe(porId('valor-display'))).toBe('0,00');
   });
 
@@ -162,11 +203,11 @@ describe('NovoLancamentoSheet', () => {
 
     await digitar('5');
     expect(botaoSalvar().props.disabled).toBe(false);
-    expect(textoDe(botaoSalvar())).toBe('Salvar Receita');
-
-    await tocar('tipo-despesa');
     expect(textoDe(botaoSalvar())).toBe('Salvar Despesa');
-    expect(existe('recorrencia-fixa')).toBe(false);
+
+    await tocar('tipo-receita');
+    expect(textoDe(botaoSalvar())).toBe('Salvar Receita');
+    expect(existe('recorrencia-fixa')).toBe(true);
 
     await digitar('⌫');
     expect(botaoSalvar().props.disabled).toBe(true);
@@ -175,6 +216,7 @@ describe('NovoLancamentoSheet', () => {
   it('salva uma receita fixa de salário', async () => {
     await renderizar(repositorio);
     await tocar('botao-novo-lancamento');
+    await tocar('tipo-receita');
 
     await digitar('1', '2', '0', '0');
     expect(textoDe(porId('valor-display'))).toBe('1.200');
@@ -190,6 +232,7 @@ describe('NovoLancamentoSheet', () => {
         categoria: 'salario',
         recorrencia: 'fixa',
         descricao: 'Salário',
+        comprovanteUri: null,
       }),
     );
     expect(existe('novo-lancamento-sheet')).toBe(false);
@@ -221,7 +264,7 @@ describe('NovoLancamentoSheet', () => {
     await tocar('botao-novo-lancamento');
 
     await digitar('5');
-    await tocar('categoria-freelance');
+    await tocar('categoria-alimentacao');
     await tocar('botao-salvar');
 
     expect(existe('novo-lancamento-sheet')).toBe(true);
@@ -292,5 +335,183 @@ describe('NovoLancamentoSheet', () => {
     await tocar('confirmar-exclusao');
 
     expect(repositorio.excluir).toHaveBeenCalledWith(1);
+  });
+
+  describe('comprovante (US 1.2)', () => {
+    const anexarFoto = async () => {
+      await tocar('botao-camera');
+      await tocar('menu-tirar-foto');
+    };
+
+    it('o botão de câmera só aparece em Despesa', async () => {
+      await renderizar(repositorio);
+      await tocar('botao-novo-lancamento');
+
+      expect(porId('botao-camera').props.accessibilityLabel).toBe(
+        'Anexar comprovante',
+      );
+
+      await tocar('tipo-receita');
+      expect(existe('botao-camera')).toBe(false);
+
+      await tocar('tipo-despesa');
+      expect(existe('botao-camera')).toBe(true);
+    });
+
+    it('"Tirar foto" mostra a miniatura e salvar envia o comprovanteUri', async () => {
+      await renderizar(repositorio);
+      await tocar('botao-novo-lancamento');
+
+      await anexarFoto();
+
+      expect(seletor.tirarFoto).toHaveBeenCalledTimes(1);
+      expect(porId('comprovante-imagem').props.source).toEqual({
+        uri: FOTO.uri,
+      });
+
+      await digitar('4', '5');
+      await tocar('categoria-alimentacao');
+      await tocar('botao-salvar');
+
+      expect(armazenamento.guardar).toHaveBeenCalledWith(FOTO.uri);
+      expect(repositorio.criar).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tipo: 'despesa',
+          valorCentavos: 4500,
+          comprovanteUri: `${PASTA}foto.jpg`,
+        }),
+      );
+      expect(textoDe(porId('home-snackbar'))).toContain('Despesa salva');
+      expect(porId('icone-comprovante').props.accessibilityLabel).toBe(
+        'Tem comprovante',
+      );
+    });
+
+    it('"Escolher da galeria" usa a galeria', async () => {
+      await renderizar(repositorio);
+      await tocar('botao-novo-lancamento');
+
+      await tocar('botao-camera');
+      await tocar('menu-galeria');
+
+      expect(seletor.escolherDaGaleria).toHaveBeenCalledTimes(1);
+      expect(existe('comprovante-miniatura')).toBe(true);
+    });
+
+    it('imagem GIF mostra o erro e não anexa', async () => {
+      seletor = criarSeletorFake({
+        uri: 'file:///cache/anim.gif',
+        tipoMime: 'image/gif',
+        tamanhoBytes: 1000,
+      });
+      await renderizar(repositorio);
+      await tocar('botao-novo-lancamento');
+
+      await anexarFoto();
+
+      expect(existe('comprovante-anexado')).toBe(false);
+      expect(textoDe(porId('sheet-snackbar'))).toContain(
+        'Formato não suportado. Use JPG ou PNG.',
+      );
+    });
+
+    it('erro do seletor aparece no Snackbar do modal', async () => {
+      seletor.tirarFoto.mockRejectedValueOnce(
+        new Error('Câmera indisponível neste aparelho.'),
+      );
+      await renderizar(repositorio);
+      await tocar('botao-novo-lancamento');
+
+      await anexarFoto();
+
+      expect(existe('comprovante-anexado')).toBe(false);
+      expect(textoDe(porId('sheet-snackbar'))).toContain(
+        'Câmera indisponível neste aparelho.',
+      );
+    });
+
+    it('"Remover" tira a foto do formulário', async () => {
+      await renderizar(repositorio);
+      await tocar('botao-novo-lancamento');
+      await anexarFoto();
+
+      await tocar('comprovante-remover');
+
+      expect(existe('comprovante-anexado')).toBe(false);
+      await digitar('5');
+      await tocar('categoria-alimentacao');
+      await tocar('botao-salvar');
+      expect(repositorio.criar).toHaveBeenCalledWith(
+        expect.objectContaining({comprovanteUri: null}),
+      );
+      expect(armazenamento.guardar).not.toHaveBeenCalled();
+    });
+
+    it('trocar para Receita tira a foto', async () => {
+      await renderizar(repositorio);
+      await tocar('botao-novo-lancamento');
+      await anexarFoto();
+      expect(existe('comprovante-anexado')).toBe(true);
+
+      await tocar('tipo-receita');
+      await tocar('tipo-despesa');
+
+      expect(existe('comprovante-anexado')).toBe(false);
+    });
+
+    it('miniatura que não carrega mostra "Comprovante não encontrado"', async () => {
+      repositorio = new RepositorioEmMemoria([
+        {...despesa, comprovanteUri: `${PASTA}sumiu.jpg`},
+      ]);
+      await renderizar(repositorio);
+      await tocar('abrir-1');
+
+      await act(async () => {
+        porId('comprovante-imagem').props.onError();
+      });
+
+      expect(existe('comprovante-quebrado')).toBe(true);
+      expect(textoDe(porId('comprovante-anexado'))).toContain(
+        'Comprovante não encontrado',
+      );
+    });
+
+    it('tocar na miniatura abre o visualizador em tela cheia', async () => {
+      await renderizar(repositorio);
+      await tocar('botao-novo-lancamento');
+      await anexarFoto();
+
+      await tocar('comprovante-miniatura');
+      expect(existe('visualizador-comprovante')).toBe(true);
+
+      await tocar('fechar-visualizador');
+      expect(existe('visualizador-comprovante')).toBe(false);
+    });
+
+    it('editar trocando a foto salva a nova e apaga a antiga', async () => {
+      const antiga = `${PASTA}antiga.jpg`;
+      repositorio = new RepositorioEmMemoria([
+        {...despesa, comprovanteUri: antiga},
+      ]);
+      seletor = criarSeletorFake({
+        uri: 'file:///cache/nova.png',
+        tipoMime: 'image/png',
+      });
+      await renderizar(repositorio);
+      await tocar('abrir-1');
+
+      await tocar('comprovante-trocar');
+      await tocar('menu-tirar-foto');
+      await tocar('botao-salvar');
+
+      expect(repositorio.atualizar).toHaveBeenCalledWith(
+        1,
+        expect.objectContaining({comprovanteUri: `${PASTA}nova.png`}),
+      );
+      expect(armazenamento.apagar).toHaveBeenCalledWith(antiga);
+      expect(textoDe(porId('home-snackbar'))).toContain(
+        'Lançamento atualizado',
+      );
+    });
   });
 });

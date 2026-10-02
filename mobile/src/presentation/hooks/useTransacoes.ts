@@ -1,7 +1,9 @@
-import {useCallback, useEffect, useRef, useState} from 'react';
+import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 
+import {LancamentosComComprovante} from '../../domain/casosDeUso/LancamentosComComprovante';
 import {hojeISO} from '../../domain/datas';
 import type {DadosTransacao, Transacao} from '../../domain/entities/Transacao';
+import type {ArmazenamentoComprovantes} from '../../domain/repositories/ArmazenamentoComprovantes';
 import type {TransacaoRepository} from '../../domain/repositories/TransacaoRepository';
 import {mensagemDeErro} from '../utils/mensagemDeErro';
 
@@ -21,7 +23,14 @@ export interface UseTransacoes extends EstadoTransacoes {
   excluir: (id: number) => Promise<void>;
 }
 
-export function useTransacoes(repositorio: TransacaoRepository): UseTransacoes {
+export function useTransacoes(
+  repositorio: TransacaoRepository,
+  armazenamento: ArmazenamentoComprovantes,
+): UseTransacoes {
+  const lancamentos = useMemo(
+    () => new LancamentosComComprovante(repositorio, armazenamento),
+    [repositorio, armazenamento],
+  );
   const [estado, setEstado] = useState<EstadoTransacoes>({
     transacoes: [],
     totalReceitasMes: 0,
@@ -68,26 +77,26 @@ export function useTransacoes(repositorio: TransacaoRepository): UseTransacoes {
 
   const criar = useCallback(
     async (dados: DadosTransacao) => {
-      await repositorio.criar(dados);
+      await lancamentos.criar(dados);
       await recarregar();
     },
-    [repositorio, recarregar],
+    [lancamentos, recarregar],
   );
 
   const atualizar = useCallback(
     async (id: number, dados: DadosTransacao) => {
-      await repositorio.atualizar(id, dados);
+      await lancamentos.atualizar(id, dados);
       await recarregar();
     },
-    [repositorio, recarregar],
+    [lancamentos, recarregar],
   );
 
   const excluir = useCallback(
     async (id: number) => {
-      await repositorio.excluir(id);
+      await lancamentos.excluir(id);
       await recarregar();
     },
-    [repositorio, recarregar],
+    [lancamentos, recarregar],
   );
 
   return {...estado, recarregar, criar, atualizar, excluir};
