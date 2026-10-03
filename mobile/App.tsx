@@ -5,13 +5,14 @@ import {SafeAreaProvider} from 'react-native-safe-area-context';
 
 import {FsArmazenamentoComprovantes} from './src/data/arquivos/FsArmazenamentoComprovantes';
 import {getDatabase} from './src/data/database/connection';
+import {SqliteCofreRepository} from './src/data/repositories/SqliteCofreRepository';
 import {SqliteTransacaoRepository} from './src/data/repositories/SqliteTransacaoRepository';
 import HomeScreen from './src/presentation/screens/HomeScreen';
 import {themeFor} from './src/presentation/theme';
 
-const repositorio = new SqliteTransacaoRepository(
-  async () => (await getDatabase()).db,
-);
+const obterBanco = async () => (await getDatabase()).db;
+const repositorio = new SqliteTransacaoRepository(obterBanco);
+const repositorioCofres = new SqliteCofreRepository(obterBanco);
 const armazenamento = new FsArmazenamentoComprovantes();
 
 function App(): React.JSX.Element {
@@ -25,7 +26,11 @@ function App(): React.JSX.Element {
           barStyle={theme.dark ? 'light-content' : 'dark-content'}
           backgroundColor={theme.colors.background}
         />
-        <HomeScreen repositorio={repositorio} armazenamento={armazenamento} />
+        <HomeScreen
+          repositorio={repositorio}
+          armazenamento={armazenamento}
+          repositorioCofres={repositorioCofres}
+        />
       </PaperProvider>
     </SafeAreaProvider>
   );

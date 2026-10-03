@@ -10,9 +10,16 @@ import renderer, {
 } from 'react-test-renderer';
 
 import {hojeISO} from '../src/domain/datas';
+import type {
+  Cofre,
+  DadosCofre,
+  DadosMovimento,
+  MovimentoCofre,
+} from '../src/domain/entities/Cofre';
 import type {TotaisMes} from '../src/domain/entities/Dashboard';
 import type {DadosTransacao, Transacao} from '../src/domain/entities/Transacao';
 import type {ArmazenamentoComprovantes} from '../src/domain/repositories/ArmazenamentoComprovantes';
+import type {CofreRepository} from '../src/domain/repositories/CofreRepository';
 import type {TransacaoRepository} from '../src/domain/repositories/TransacaoRepository';
 import HomeScreen from '../src/presentation/screens/HomeScreen';
 import type {
@@ -91,6 +98,67 @@ class RepositorioEmMemoria implements TransacaoRepository {
   });
 }
 
+class CofresEmMemoria implements CofreRepository {
+  cofres: Omit<Cofre, 'saldoCentavos'>[] = [];
+  movimentos: MovimentoCofre[] = [];
+  private proximoId = 1;
+
+  private saldoDe(cofreId: number): number {
+    return this.movimentos
+      .filter(m => m.cofreId === cofreId)
+      .reduce(
+        (soma, m) =>
+          soma + (m.tipo === 'deposito' ? m.valorCentavos : -m.valorCentavos),
+        0,
+      );
+  }
+
+  listar = jest.fn(async () =>
+    this.cofres.map(c => ({...c, saldoCentavos: this.saldoDe(c.id)})),
+  );
+
+  buscarPorId = jest.fn(async (id: number) => {
+    const cofre = this.cofres.find(c => c.id === id);
+    return cofre ? {...cofre, saldoCentavos: this.saldoDe(id)} : null;
+  });
+
+  criar = jest.fn(async (dados: DadosCofre) => {
+    const id = this.proximoId++;
+    this.cofres.push({...dados, id});
+    return id;
+  });
+
+  atualizar = jest.fn(async (id: number, dados: DadosCofre) => {
+    this.cofres = this.cofres.map(c => (c.id === id ? {...dados, id} : c));
+  });
+
+  excluir = jest.fn(async (id: number) => {
+    this.cofres = this.cofres.filter(c => c.id !== id);
+    this.movimentos = this.movimentos.filter(m => m.cofreId !== id);
+  });
+
+  registrarMovimento = jest.fn(async (movimento: DadosMovimento) => {
+    const id = this.movimentos.length + 1;
+    this.movimentos.push({...movimento, id});
+    return id;
+  });
+
+  listarMovimentos = jest.fn(async (cofreId: number, limite: number) =>
+    this.movimentos
+      .filter(m => m.cofreId === cofreId)
+      .reverse()
+      .slice(0, limite),
+  );
+
+  totalGuardado = jest.fn(async () =>
+    this.movimentos.reduce(
+      (soma, m) =>
+        soma + (m.tipo === 'deposito' ? m.valorCentavos : -m.valorCentavos),
+      0,
+    ),
+  );
+}
+
 const PASTA = 'file:///docs/comprovantes/';
 
 class ArmazenamentoFake implements ArmazenamentoComprovantes {
@@ -133,6 +201,7 @@ const despesa: Transacao = {
 let tree: ReactTestRenderer;
 
 let armazenamento: ArmazenamentoFake;
+let cofresRepo: CofresEmMemoria;
 let seletor: ReturnType<typeof criarSeletorFake>;
 
 async function renderizar(repositorio: TransacaoRepository) {
@@ -142,6 +211,7 @@ async function renderizar(repositorio: TransacaoRepository) {
         <HomeScreen
           repositorio={repositorio}
           armazenamento={armazenamento}
+          repositorioCofres={cofresRepo}
           seletorImagem={seletor}
         />
       </PaperProvider>,
@@ -200,6 +270,7 @@ describe('NovoLancamentoSheet', () => {
     jest.useFakeTimers();
     repositorio = new RepositorioEmMemoria();
     armazenamento = new ArmazenamentoFake();
+    cofresRepo = new CofresEmMemoria();
     seletor = criarSeletorFake();
   });
 
@@ -557,6 +628,7 @@ describe('HomeScreen: dashboard', () => {
     jest.useFakeTimers();
     appStateMock.mockClear();
     armazenamento = new ArmazenamentoFake();
+    cofresRepo = new CofresEmMemoria();
     seletor = criarSeletorFake();
   });
 
@@ -652,5 +724,175 @@ describe('HomeScreen: dashboard', () => {
     });
 
     expect(textoDe(porId('saldo-atual'))).toBe('R$ -89,90');
+  });
+});
+
+describe('HomeScreen: cofres virtuais', () => {
+  const receita: Transacao = {
+    id: 1,
+    tipo: 'receita',
+    descricao: 'Salário',
+    valorCentavos: 100000,
+    data: hojeISO(),
+    categoria: 'salario',
+    recorrencia: 'fixa',
+    comprovanteUri: null,
+    sincronizado: true,
+  };
+
+  let repositorio: RepositorioEmMemoria;
+
+  beforeEach(() => {
+    jest.useFakeTimers();
+    repositorio = new RepositorioEmMemoria([receita]);
+    armazenamento = new ArmazenamentoFake();
+    cofresRepo = new CofresEmMemoria();
+    seletor = criarSeletorFake();
+  });
+
+  afterEach(async () => {
+    await act(async () => {
+      jest.runOnlyPendingTimers();
+      tree.unmount();
+    });
+    jest.useRealTimers();
+  });
+
+  async function escrever(id: string, texto: string) {
+    const [campo] = tree.root.findAll(
+      no =>
+        no.props.testID === id && typeof no.props.onChangeText === 'function',
+    );
+    await act(async () => {
+      campo.props.onChangeText(texto);
+    });
+  }
+
+  async function criarViagem() {
+    const id = await cofresRepo.criar({
+      nome: 'Viagem',
+      icone: '✈️',
+      cor: '#64B5F6',
+      metaCentavos: 800000,
+    });
+    return id;
+  }
+
+  it('sem cofres mostra o atalho "Criar cofre" que abre a tela com o formulário', async () => {
+    await renderizar(repositorio);
+
+    expect(existe('cofre-criar-atalho')).toBe(true);
+    expect(existe('saldo-disponivel')).toBe(false);
+    expect(existe('cofres-screen')).toBe(false);
+
+    await tocar('cofre-criar-atalho');
+
+    expect(existe('cofres-screen')).toBe(true);
+    expect(textoDe(porId('cofre-form-titulo'))).toBe('Novo Cofre');
+    expect(textoDe(porId('cofres-vazio'))).toContain('Nenhum cofre ainda');
+  });
+
+  it('cria um cofre pela tela e ele aparece no mini card da tela inicial', async () => {
+    await renderizar(repositorio);
+    await tocar('cofres-ver-todos');
+    expect(existe('cofre-form-sheet')).toBe(false);
+
+    await tocar('cofres-novo');
+    await escrever('cofre-nome-input', 'Viagem');
+    await escrever('cofre-meta-input', '8000');
+    await tocar('cofre-form-salvar');
+
+    expect(cofresRepo.criar).toHaveBeenCalledWith({
+      nome: 'Viagem',
+      icone: '💰',
+      cor: '#39FF84',
+      metaCentavos: 800000,
+    });
+    expect(existe('cofre-form-sheet')).toBe(false);
+    expect(textoDe(porId('cofres-snackbar'))).toBe('Cofre criado');
+    expect(textoDe(porId('cofre-meta-1'))).toBe('0% · Meta: R$ 8.000,00');
+    expect(existe('cofre-mini-1')).toBe(true);
+    expect(existe('cofre-criar-atalho')).toBe(false);
+  });
+
+  it('guardar diminui o disponível sem mudar o saldo e atualiza o dashboard', async () => {
+    await criarViagem();
+    await renderizar(repositorio);
+
+    await tocar('cofre-mini-1');
+    expect(textoDe(porId('cofres-disponivel'))).toBe('Disponível: R$ 1.000,00');
+
+    await tocar('cofre-card-1');
+    await digitar('3', '0', '0');
+    await tocar('movimentar-confirmar');
+
+    expect(cofresRepo.registrarMovimento).toHaveBeenCalledWith({
+      cofreId: 1,
+      tipo: 'deposito',
+      valorCentavos: 30000,
+      data: hojeISO(),
+    });
+    expect(repositorio.criar).not.toHaveBeenCalled();
+    expect(existe('movimentar-cofre-sheet')).toBe(false);
+    expect(textoDe(porId('cofres-snackbar'))).toBe(
+      'R$ 300,00 guardado em Viagem',
+    );
+    expect(textoDe(porId('cofres-total-valor'))).toBe('R$ 300,00');
+    expect(textoDe(porId('cofres-disponivel'))).toBe('Disponível: R$ 700,00');
+    expect(textoDe(porId('cofre-meta-1'))).toBe('4% · Meta: R$ 8.000,00');
+
+    await tocar('cofres-voltar');
+    expect(existe('cofres-screen')).toBe(false);
+    expect(textoDe(porId('saldo-atual'))).toBe('R$ 1.000,00');
+    expect(textoDe(porId('saldo-disponivel'))).toBe(
+      'R$ 700,00 disponível · R$ 300,00 em cofres',
+    );
+  });
+
+  it('guardar mais que o disponível mostra o erro e não fecha a folha', async () => {
+    await criarViagem();
+    await renderizar(repositorio);
+    await tocar('cofre-mini-1');
+    await tocar('cofre-card-1');
+
+    await digitar('2', '0', '0', '0');
+    await tocar('movimentar-confirmar');
+
+    expect(textoDe(porId('movimentar-erro'))).toBe(
+      'Você tem só R$ 1.000,00 disponível.',
+    );
+    expect(existe('movimentar-cofre-sheet')).toBe(true);
+    expect(cofresRepo.registrarMovimento).not.toHaveBeenCalled();
+  });
+
+  it('excluir o cofre pede confirmação e devolve o dinheiro ao disponível', async () => {
+    const id = await criarViagem();
+    await cofresRepo.registrarMovimento({
+      cofreId: id,
+      tipo: 'deposito',
+      valorCentavos: 40000,
+      data: hojeISO(),
+    });
+    await renderizar(repositorio);
+    expect(textoDe(porId('saldo-disponivel'))).toBe(
+      'R$ 600,00 disponível · R$ 400,00 em cofres',
+    );
+
+    await tocar('cofre-mini-1');
+    await tocar('cofre-menu-1');
+    await tocar('menu-cofre-excluir');
+
+    expect(textoDe(porId('dialogo-exclusao-titulo'))).toBe('Excluir "Viagem"?');
+    expect(textoDe(porId('dialogo-exclusao-mensagem'))).toBe(
+      'Os R$ 400,00 guardados voltam para o saldo disponível.',
+    );
+
+    await tocar('confirmar-exclusao');
+
+    expect(cofresRepo.excluir).toHaveBeenCalledWith(1);
+    expect(textoDe(porId('cofres-snackbar'))).toBe('Cofre excluído');
+    expect(textoDe(porId('cofres-disponivel'))).toBe('Disponível: R$ 1.000,00');
+    expect(existe('saldo-disponivel')).toBe(false);
+    expect(textoDe(porId('saldo-atual'))).toBe('R$ 1.000,00');
   });
 });

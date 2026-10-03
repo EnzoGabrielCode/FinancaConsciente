@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useMemo, useState} from 'react';
 import {
   Pressable,
   RefreshControl,
@@ -19,19 +19,24 @@ import {
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
 import {DATABASE_NAME} from '../../data/database/connection';
+import {GerenciarCofres} from '../../domain/casosDeUso/GerenciarCofres';
 import {saudacao} from '../../domain/datas';
 import type {DadosTransacao, Transacao} from '../../domain/entities/Transacao';
 import type {ArmazenamentoComprovantes} from '../../domain/repositories/ArmazenamentoComprovantes';
+import type {CofreRepository} from '../../domain/repositories/CofreRepository';
 import type {TransacaoRepository} from '../../domain/repositories/TransacaoRepository';
 import CardSaldo from '../components/CardSaldo';
+import CofreMiniCard from '../components/CofreMiniCard';
 import ConfirmarExclusaoDialog from '../components/ConfirmarExclusaoDialog';
 import NovoLancamentoSheet from '../components/NovoLancamentoSheet';
 import TransacaoItem from '../components/TransacaoItem';
+import {useCofres} from '../hooks/useCofres';
 import {useDatabase} from '../hooks/useDatabase';
 import {useTransacoes} from '../hooks/useTransacoes';
 import type {SeletorImagem} from '../servicos/seletorImagem';
 import {CORES} from '../theme/cores';
 import {mensagemDeErro} from '../utils/mensagemDeErro';
+import CofresScreen from './CofresScreen';
 
 function DatabaseIcon(props: {size: number}): React.JSX.Element {
   return <Avatar.Icon {...props} icon="database" />;
@@ -40,7 +45,13 @@ function DatabaseIcon(props: {size: number}): React.JSX.Element {
 interface Props {
   repositorio: TransacaoRepository;
   armazenamento: ArmazenamentoComprovantes;
+  repositorioCofres: CofreRepository;
   seletorImagem?: SeletorImagem;
+}
+
+interface EstadoTelaCofres {
+  visivel: boolean;
+  abrirFormulario: boolean;
 }
 
 interface EstadoSheet {
@@ -51,12 +62,30 @@ interface EstadoSheet {
 function HomeScreen({
   repositorio,
   armazenamento,
+  repositorioCofres,
   seletorImagem,
 }: Props): React.JSX.Element {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const database = useDatabase();
-  const lancamentos = useTransacoes(repositorio, armazenamento);
+  const lancamentos = useTransacoes(
+    repositorio,
+    armazenamento,
+    repositorioCofres,
+  );
+  const gerenciarCofres = useMemo(
+    () => new GerenciarCofres(repositorioCofres, repositorio),
+    [repositorioCofres, repositorio],
+  );
+  const cofres = useCofres(
+    gerenciarCofres,
+    repositorioCofres,
+    lancamentos.recarregar,
+  );
+  const [telaCofres, setTelaCofres] = useState<EstadoTelaCofres>({
+    visivel: false,
+    abrirFormulario: false,
+  });
 
   const [sheet, setSheet] = useState<EstadoSheet>({
     visivel: false,
@@ -70,7 +99,7 @@ function HomeScreen({
   const puxarParaAtualizar = async () => {
     setAtualizando(true);
     try {
-      await lancamentos.recarregar();
+      await Promise.all([lancamentos.recarregar(), cofres.recarregar()]);
     } finally {
       setAtualizando(false);
     }
@@ -88,6 +117,7 @@ function HomeScreen({
     } else {
       await lancamentos.criar(dados);
     }
+    cofres.recarregar();
     fecharSheet();
     setAviso(
       emEdicao
@@ -100,6 +130,7 @@ function HomeScreen({
 
   const excluirDoSheet = async (id: number) => {
     await lancamentos.excluir(id);
+    cofres.recarregar();
     fecharSheet();
     setAviso('Lançamento excluído');
   };
@@ -111,6 +142,7 @@ function HomeScreen({
     setExcluindo(true);
     try {
       await lancamentos.excluir(paraExcluir.id);
+      cofres.recarregar();
       setAviso('Lançamento excluído');
     } catch (erro) {
       setAviso(mensagemDeErro(erro));
@@ -119,6 +151,9 @@ function HomeScreen({
       setParaExcluir(null);
     }
   };
+
+  const abrirCofres = (abrirFormulario = false) =>
+    setTelaCofres({visivel: true, abrirFormulario});
 
   return (
     <View style={[styles.tela, {backgroundColor: theme.colors.background}]}>
@@ -177,6 +212,54 @@ function HomeScreen({
               />
             )
           )}
+
+          <View style={styles.secaoCofres} testID="secao-cofres">
+            <View style={styles.tituloSecao}>
+              <Text style={styles.textoTituloSecao}>Cofres Virtuais</Text>
+              <Pressable
+                onPress={() => abrirCofres()}
+                accessibilityRole="button"
+                accessibilityLabel="Ver todos os cofres"
+                hitSlop={8}
+                testID="cofres-ver-todos">
+                <Text style={styles.verTodos}>Ver todos</Text>
+              </Pressable>
+            </View>
+            {!cofres.carregando && (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.linhaCofres}
+                testID="cofres-mini-lista">
+                {cofres.cofres.length > 0 ? (
+                  cofres.cofres.map(cofre => (
+                    <CofreMiniCard
+                      key={cofre.id}
+                      cofre={cofre}
+                      onPress={() => abrirCofres()}
+                    />
+                  ))
+                ) : (
+                  <Pressable
+                    onPress={() => abrirCofres(true)}
+                    accessibilityRole="button"
+                    accessibilityLabel="Criar cofre"
+                    testID="cofre-criar-atalho"
+                    style={({pressed}) => [
+                      styles.cofreVazio,
+                      pressed && styles.fabPressionado,
+                    ]}>
+                    <Icon
+                      source="plus"
+                      size={20}
+                      color={CORES.textoSecundario}
+                    />
+                    <Text style={styles.textoCofreVazio}>Criar cofre</Text>
+                  </Pressable>
+                )}
+              </ScrollView>
+            )}
+          </View>
 
           <Text variant="titleMedium">Últimas Transações</Text>
           {lancamentos.carregando && (
@@ -262,6 +345,13 @@ function HomeScreen({
         onCancelar={() => setParaExcluir(null)}
         onConfirmar={confirmarExclusao}
       />
+
+      <CofresScreen
+        visivel={telaCofres.visivel}
+        abrirFormulario={telaCofres.abrirFormulario}
+        cofres={cofres}
+        onFechar={() => setTelaCofres({visivel: false, abrirFormulario: false})}
+      />
     </View>
   );
 }
@@ -296,6 +386,42 @@ const styles = StyleSheet.create({
   },
   carregandoResumo: {
     height: 200,
+  },
+  secaoCofres: {
+    gap: 12,
+  },
+  tituloSecao: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  textoTituloSecao: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: CORES.texto,
+  },
+  verTodos: {
+    fontSize: 12,
+    color: CORES.verde,
+  },
+  linhaCofres: {
+    gap: 10,
+  },
+  cofreVazio: {
+    minWidth: 120,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 22,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: 'rgba(255,255,255,0.15)',
+  },
+  textoCofreVazio: {
+    fontSize: 12,
+    color: CORES.textoSecundario,
   },
   erroLista: {
     gap: 8,
