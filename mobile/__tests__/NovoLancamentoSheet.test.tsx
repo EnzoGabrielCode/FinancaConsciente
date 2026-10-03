@@ -656,7 +656,7 @@ describe('HomeScreen: dashboard', () => {
       {...despesa, data: hojeISO(), valorCentavos: 20000},
     ]);
     await renderizar(repositorio);
-    expect(textoDe(porId('saldo-atual'))).toBe('R$ -200,00');
+    expect(textoDe(porId('disponivel'))).toBe('R$ -200,00');
 
     await tocar('botao-novo-lancamento');
     await tocar('tipo-receita');
@@ -664,15 +664,14 @@ describe('HomeScreen: dashboard', () => {
     await tocar('categoria-salario');
     await tocar('botao-salvar');
 
-    expect(textoDe(porId('saldo-atual'))).toBe('R$ 1.000,00');
+    expect(textoDe(porId('disponivel'))).toBe('R$ 1.000,00');
     expect(textoDe(porId('receitas-mes'))).toBe('+R$ 1.200,00');
     expect(textoDe(porId('despesas-mes'))).toBe('-R$ 200,00');
-    expect(textoDe(porId('sobra-mes-detalhe'))).toBe('83% da renda');
 
     await tocar('excluir-1');
     await tocar('confirmar-exclusao');
 
-    expect(textoDe(porId('saldo-atual'))).toBe('R$ 1.200,00');
+    expect(textoDe(porId('disponivel'))).toBe('R$ 1.200,00');
     expect(textoDe(porId('despesas-mes'))).toBe('-R$ 0,00');
   });
 
@@ -723,7 +722,7 @@ describe('HomeScreen: dashboard', () => {
       await refresh.props.onRefresh();
     });
 
-    expect(textoDe(porId('saldo-atual'))).toBe('R$ -89,90');
+    expect(textoDe(porId('disponivel'))).toBe('R$ -89,90');
   });
 });
 
@@ -782,7 +781,8 @@ describe('HomeScreen: cofres virtuais', () => {
     await renderizar(repositorio);
 
     expect(existe('cofre-criar-atalho')).toBe(true);
-    expect(existe('saldo-disponivel')).toBe(false);
+    expect(textoDe(porId('em-cofres'))).toBe('R$ 0,00');
+    expect(textoDe(porId('em-cofres-detalhe'))).toBe('Nenhum cofre');
     expect(existe('cofres-screen')).toBe(false);
 
     await tocar('cofre-criar-atalho');
@@ -813,9 +813,7 @@ describe('HomeScreen: cofres virtuais', () => {
     expect(textoDe(porId('cofre-meta-1'))).toBe('0% · Meta: R$ 8.000,00');
     expect(existe('cofre-mini-1')).toBe(true);
     expect(existe('cofre-criar-atalho')).toBe(false);
-    expect(textoDe(porId('saldo-disponivel'))).toBe(
-      'Disponível R$ 1.000,00 · R$ 0,00 em cofres',
-    );
+    expect(textoDe(porId('em-cofres-detalhe'))).toBe('1 cofre');
   });
 
   it('guardar diminui o disponível sem mudar o saldo e atualiza o dashboard', async () => {
@@ -846,10 +844,9 @@ describe('HomeScreen: cofres virtuais', () => {
 
     await tocar('cofres-voltar');
     expect(existe('cofres-screen')).toBe(false);
-    expect(textoDe(porId('saldo-atual'))).toBe('R$ 1.000,00');
-    expect(textoDe(porId('saldo-disponivel'))).toBe(
-      'Disponível R$ 700,00 · R$ 300,00 em cofres',
-    );
+    expect(textoDe(porId('saldo-total'))).toBe('Saldo total R$ 1.000,00');
+    expect(textoDe(porId('disponivel'))).toBe('R$ 700,00');
+    expect(textoDe(porId('em-cofres'))).toBe('R$ 300,00');
   });
 
   it('guardar mais que o disponível mostra o erro e não fecha a folha', async () => {
@@ -877,9 +874,8 @@ describe('HomeScreen: cofres virtuais', () => {
       data: hojeISO(),
     });
     await renderizar(repositorio);
-    expect(textoDe(porId('saldo-disponivel'))).toBe(
-      'Disponível R$ 600,00 · R$ 400,00 em cofres',
-    );
+    expect(textoDe(porId('disponivel'))).toBe('R$ 600,00');
+    expect(textoDe(porId('em-cofres'))).toBe('R$ 400,00');
 
     await tocar('cofre-mini-1');
     await tocar('cofre-menu-1');
@@ -897,8 +893,9 @@ describe('HomeScreen: cofres virtuais', () => {
       'Cofre excluído · R$ 400,00 voltaram para o disponível',
     );
     expect(textoDe(porId('cofres-disponivel'))).toBe('Disponível: R$ 1.000,00');
-    expect(existe('saldo-disponivel')).toBe(false);
-    expect(textoDe(porId('saldo-atual'))).toBe('R$ 1.000,00');
+    expect(textoDe(porId('disponivel'))).toBe('R$ 1.000,00');
+    expect(textoDe(porId('em-cofres'))).toBe('R$ 0,00');
+    expect(textoDe(porId('em-cofres-detalhe'))).toBe('Nenhum cofre');
   });
 
   it('excluir um cofre sem saldo mostra só "Cofre excluído"', async () => {

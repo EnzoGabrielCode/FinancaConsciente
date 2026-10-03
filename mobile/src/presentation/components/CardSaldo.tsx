@@ -8,7 +8,7 @@ import GraficoMensal from './GraficoMensal';
 
 interface Props {
   resumo: ResumoDashboard;
-  quantidadeCofres?: number;
+  quantidadeCofres: number;
 }
 
 function partesDoSaldo(centavos: number) {
@@ -19,6 +19,13 @@ function partesDoSaldo(centavos: number) {
     inteiros,
     decimais: `,${decimais}`,
   };
+}
+
+function textoCofres(quantidade: number): string {
+  if (quantidade === 0) {
+    return 'Nenhum cofre';
+  }
+  return `${quantidade} ${quantidade === 1 ? 'cofre' : 'cofres'}`;
 }
 
 function SeloVariacao({variacao}: {variacao: number}): React.JSX.Element {
@@ -81,59 +88,45 @@ function Coluna({
   );
 }
 
-function CardSaldo({resumo, quantidadeCofres = 0}: Props): React.JSX.Element {
-  const saldo = partesDoSaldo(resumo.saldoAtualCentavos);
-  const corSaldo = resumo.saldoAtualCentavos < 0 ? CORES.vermelho : CORES.verde;
-  const sobraNegativa = resumo.poupadoMesCentavos < 0;
-  const disponivel = formatarCentavos(resumo.disponivelCentavos);
-  const emCofres = formatarCentavos(resumo.guardadoCofresCentavos);
+function CardSaldo({resumo, quantidadeCofres}: Props): React.JSX.Element {
+  const disponivel = partesDoSaldo(resumo.disponivelCentavos);
+  const corDisponivel =
+    resumo.disponivelCentavos < 0 ? CORES.vermelho : CORES.verde;
+  const saldoTotal = formatarCentavos(resumo.saldoAtualCentavos);
 
   return (
     <View style={styles.card} testID="card-saldo">
-      <View style={styles.topo}>
-        <Text style={styles.titulo}>SALDO ATUAL</Text>
-        {resumo.variacaoSaldo !== null && (
-          <SeloVariacao variacao={resumo.variacaoSaldo} />
-        )}
-      </View>
+      <Text style={styles.titulo}>DISPONÍVEL</Text>
 
-      <Text
-        style={styles.saldo}
-        numberOfLines={1}
-        adjustsFontSizeToFit
-        accessibilityLabel={`Saldo atual: ${formatarCentavos(
-          resumo.saldoAtualCentavos,
-        )}`}
-        testID="saldo-atual">
-        <Text style={styles.moeda}>R$ </Text>
-        <Text style={{color: corSaldo}} testID="saldo-inteiros">
-          {saldo.sinal}
-          {saldo.inteiros}
-        </Text>
-        <Text style={styles.centavos}>{saldo.decimais}</Text>
-      </Text>
-
-      {quantidadeCofres > 0 && (
+      <View style={styles.blocoDisponivel}>
         <Text
-          style={styles.linhaCofres}
-          accessibilityLabel={`Disponível: ${disponivel}, ${emCofres} em cofres`}
-          testID="saldo-disponivel">
-          <Text
-            style={[
-              styles.disponivel,
-              {
-                color:
-                  resumo.disponivelCentavos < 0 ? CORES.vermelho : CORES.verde,
-              },
-            ]}
-            testID="saldo-disponivel-valor">
-            Disponível {disponivel}
+          style={styles.disponivel}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          accessibilityLabel={`Disponível: ${formatarCentavos(
+            resumo.disponivelCentavos,
+          )}`}
+          testID="disponivel">
+          <Text style={styles.moeda}>R$ </Text>
+          <Text style={{color: corDisponivel}} testID="disponivel-inteiros">
+            {disponivel.sinal}
+            {disponivel.inteiros}
           </Text>
-          <Text style={styles.emCofres} testID="saldo-em-cofres">
-            {` · ${emCofres} em cofres`}
-          </Text>
+          <Text style={styles.centavos}>{disponivel.decimais}</Text>
         </Text>
-      )}
+
+        <View style={styles.linhaSaldoTotal}>
+          <Text
+            style={styles.saldoTotal}
+            accessibilityLabel={`Saldo total: ${saldoTotal}`}
+            testID="saldo-total">
+            Saldo total {saldoTotal}
+          </Text>
+          {resumo.variacaoSaldo !== null && (
+            <SeloVariacao variacao={resumo.variacaoSaldo} />
+          )}
+        </View>
+      </View>
 
       <View style={styles.colunas}>
         <Coluna
@@ -149,19 +142,12 @@ function CardSaldo({resumo, quantidadeCofres = 0}: Props): React.JSX.Element {
           idValor="despesas-mes"
         />
         <Coluna
-          rotulo="Sobra do mês"
-          rotuloAcessivel="Sobra do mês, receitas menos despesas"
-          valor={formatarCentavos(resumo.poupadoMesCentavos)}
-          cor={sobraNegativa ? CORES.vermelho : CORES.azul}
-          detalhe={
-            resumo.taxaPoupanca === null
-              ? null
-              : `${formatarPercentual(resumo.taxaPoupanca, {
-                  casas: 0,
-                  sinalPositivo: false,
-                })} da renda`
-          }
-          idValor="sobra-mes"
+          rotulo="Em cofres"
+          rotuloAcessivel="Em cofres"
+          valor={formatarCentavos(resumo.guardadoCofresCentavos)}
+          cor={CORES.azul}
+          detalhe={textoCofres(quantidadeCofres)}
+          idValor="em-cofres"
         />
       </View>
 
@@ -181,12 +167,6 @@ const styles = StyleSheet.create({
     elevation: 2,
     gap: 16,
   },
-  topo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 8,
-  },
   titulo: {
     fontSize: 12,
     letterSpacing: 1.2,
@@ -201,8 +181,11 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     overflow: 'hidden',
   },
-  saldo: {
+  blocoDisponivel: {
     marginTop: -8,
+    gap: 4,
+  },
+  disponivel: {
     fontFamily: FONTE_MONO,
     fontSize: 34,
     fontWeight: 'bold',
@@ -214,14 +197,13 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: CORES.textoSecundario,
   },
-  linhaCofres: {
-    marginTop: -10,
-    fontSize: 14,
+  linhaSaldoTotal: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
-  disponivel: {
-    fontWeight: 'bold',
-  },
-  emCofres: {
+  saldoTotal: {
+    fontSize: 12,
     color: CORES.textoSecundario,
   },
   colunas: {

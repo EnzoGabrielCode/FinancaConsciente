@@ -66,39 +66,74 @@ const corDe = (no: ReactTestInstance) =>
   StyleSheet.flatten(no.props.style).color;
 
 describe('CardSaldo', () => {
-  it('mostra o saldo dividido em moeda, inteiros e centavos', () => {
+  it('mostra o título DISPONÍVEL', () => {
     const tree = renderizar(resumoCom());
-    const saldo = porId(tree, 'saldo-atual');
 
-    expect(textoDe(saldo)).toBe('R$ 24.620,00');
-    expect(saldo.props.accessibilityLabel).toBe('Saldo atual: R$ 24.620,00');
-    expect(corDe(porId(tree, 'saldo-inteiros'))).toBe(CORES.verde);
+    expect(tree.root.findAllByProps({children: 'DISPONÍVEL'})).not.toHaveLength(
+      0,
+    );
+    expect(tree.root.findAllByProps({children: 'SALDO ATUAL'})).toHaveLength(0);
   });
 
-  it('mostra receitas, despesas, sobra do mês e a taxa de poupança', () => {
-    const tree = renderizar(resumoCom());
-    const rotulos = tree.root
-      .findAll(
-        no => no.props.accessible === true && typeof no.type !== 'string',
-      )
-      .map(no => no.props.accessibilityLabel);
-
-    expect(textoDe(porId(tree, 'receitas-mes'))).toBe('+R$ 8.500,00');
-    expect(textoDe(porId(tree, 'despesas-mes'))).toBe('-R$ 3.240,00');
-    expect(textoDe(porId(tree, 'sobra-mes'))).toBe('R$ 5.260,00');
-    expect(corDe(porId(tree, 'sobra-mes'))).toBe(CORES.azul);
-    expect(textoDe(porId(tree, 'sobra-mes-detalhe'))).toBe('62% da renda');
-    expect(tree.root.findAllByProps({children: 'Poupado'})).toHaveLength(0);
-    expect(
-      tree.root.findAllByProps({children: 'Sobra do mês'}),
-    ).not.toHaveLength(0);
-    expect(rotulos).toEqual(
-      expect.arrayContaining([
-        'Receitas do mês: +R$ 8.500,00',
-        'Despesas do mês: -R$ 3.240,00',
-        'Sobra do mês, receitas menos despesas: R$ 5.260,00, 62% da renda',
-      ]),
+  it('mostra o disponível positivo dividido em moeda, inteiros e centavos', () => {
+    const tree = renderizar(
+      resumoCom({guardadoCofresCentavos: 500000, disponivelCentavos: 1962000}),
+      1,
     );
+    const disponivel = porId(tree, 'disponivel');
+
+    expect(textoDe(disponivel)).toBe('R$ 19.620,00');
+    expect(disponivel.props.accessibilityLabel).toBe(
+      'Disponível: R$ 19.620,00',
+    );
+    expect(corDe(porId(tree, 'disponivel-inteiros'))).toBe('#39FF84');
+  });
+
+  it('mostra o disponível negativo em #FF6B6B com "-" antes dos inteiros', () => {
+    const tree = renderizar(
+      resumoCom({
+        saldoAtualCentavos: 30000,
+        guardadoCofresCentavos: 50000,
+        disponivelCentavos: -20000,
+      }),
+      1,
+    );
+    const disponivel = porId(tree, 'disponivel');
+
+    expect(textoDe(disponivel)).toBe('R$ -200,00');
+    expect(disponivel.props.accessibilityLabel).toBe('Disponível: -R$ 200,00');
+    expect(corDe(porId(tree, 'disponivel-inteiros'))).toBe('#FF6B6B');
+  });
+
+  it('mostra o saldo total em 12 #9E9E9E com o selo ao lado', () => {
+    const tree = renderizar(
+      resumoCom({
+        saldoAtualCentavos: 650000,
+        disponivelCentavos: 150000,
+        guardadoCofresCentavos: 500000,
+        variacaoSaldo: 0.067,
+      }),
+      1,
+    );
+    const linha = porId(tree, 'saldo-total');
+    const estilo = StyleSheet.flatten(linha.props.style);
+
+    expect(textoDe(linha)).toBe('Saldo total R$ 6.500,00');
+    expect(linha.props.accessibilityLabel).toBe('Saldo total: R$ 6.500,00');
+    expect(estilo.fontSize).toBe(12);
+    expect(estilo.color).toBe('#9E9E9E');
+    expect(
+      linha.parent?.findAll(no => no.props.testID === 'selo-variacao'),
+    ).not.toHaveLength(0);
+  });
+
+  it('sem variação mostra só o texto do saldo total', () => {
+    const tree = renderizar(resumoCom({variacaoSaldo: null}));
+
+    expect(textoDe(porId(tree, 'saldo-total'))).toBe(
+      'Saldo total R$ 24.620,00',
+    );
+    expect(existe(tree, 'selo-variacao')).toBe(false);
   });
 
   it('mostra o selo positivo em verde com seta para cima', () => {
@@ -117,88 +152,51 @@ describe('CardSaldo', () => {
     expect(corDe(selo)).toBe(CORES.vermelho);
   });
 
-  it('não mostra o selo quando a variação é null', () => {
-    const tree = renderizar(resumoCom({variacaoSaldo: null}));
-
-    expect(existe(tree, 'selo-variacao')).toBe(false);
-  });
-
-  it('mostra saldo negativo em vermelho com "-" antes dos inteiros', () => {
-    const tree = renderizar(resumoCom({saldoAtualCentavos: -152050}));
-    const saldo = porId(tree, 'saldo-atual');
-
-    expect(textoDe(saldo)).toBe('R$ -1.520,50');
-    expect(saldo.props.accessibilityLabel).toBe('Saldo atual: -R$ 1.520,50');
-    expect(corDe(porId(tree, 'saldo-inteiros'))).toBe(CORES.vermelho);
-  });
-
-  it('mostra a sobra do mês negativa em vermelho', () => {
-    const tree = renderizar(
-      resumoCom({}, [
-        {anoMes: '2026-10', receitasCentavos: 100000, despesasCentavos: 150000},
-      ]),
-    );
-
-    expect(textoDe(porId(tree, 'sobra-mes'))).toBe('-R$ 500,00');
-    expect(corDe(porId(tree, 'sobra-mes'))).toBe(CORES.vermelho);
-    expect(textoDe(porId(tree, 'sobra-mes-detalhe'))).toBe('-50% da renda');
-  });
-
-  it('não mostra a linha do disponível quando não há cofres', () => {
-    const tree = renderizar(resumoCom());
-
-    expect(existe(tree, 'saldo-disponivel')).toBe(false);
-  });
-
-  it('mostra o disponível e o total em cofres quando há algo guardado', () => {
+  it('não mostra mais a linha antiga de disponível e cofres', () => {
     const tree = renderizar(
       resumoCom({guardadoCofresCentavos: 500000, disponivelCentavos: 1962000}),
       2,
     );
-    const linha = porId(tree, 'saldo-disponivel');
 
-    expect(textoDe(linha)).toBe(
-      'Disponível R$ 19.620,00 · R$ 5.000,00 em cofres',
-    );
-    expect(StyleSheet.flatten(linha.props.style).fontSize).toBe(14);
-    expect(linha.props.accessibilityLabel).toBe(
-      'Disponível: R$ 19.620,00, R$ 5.000,00 em cofres',
-    );
-    expect(corDe(porId(tree, 'saldo-disponivel-valor'))).toBe(CORES.verde);
-    expect(corDe(porId(tree, 'saldo-em-cofres'))).toBe('#9E9E9E');
+    expect(existe(tree, 'saldo-disponivel')).toBe(false);
+    expect(existe(tree, 'saldo-atual')).toBe(false);
   });
 
-  it('mostra a linha do disponível mesmo com R$ 0,00 guardado', () => {
-    const tree = renderizar(
-      resumoCom({guardadoCofresCentavos: 0, disponivelCentavos: 2462000}),
-      1,
-    );
+  it('mostra receitas e despesas do mês', () => {
+    const tree = renderizar(resumoCom());
 
-    expect(textoDe(porId(tree, 'saldo-disponivel'))).toBe(
-      'Disponível R$ 24.620,00 · R$ 0,00 em cofres',
+    expect(textoDe(porId(tree, 'receitas-mes'))).toBe('+R$ 8.500,00');
+    expect(textoDe(porId(tree, 'despesas-mes'))).toBe('-R$ 3.240,00');
+    expect(existe(tree, 'sobra-mes')).toBe(false);
+    expect(tree.root.findAllByProps({children: 'Sobra do mês'})).toHaveLength(
+      0,
     );
   });
 
-  it('mostra o disponível negativo em #FF6B6B', () => {
-    const tree = renderizar(
-      resumoCom({
-        saldoAtualCentavos: 30000,
-        guardadoCofresCentavos: 50000,
-        disponivelCentavos: -20000,
-      }),
-      1,
-    );
-    const linha = porId(tree, 'saldo-disponivel');
+  it.each([
+    [0, 0, 'R$ 0,00', 'Nenhum cofre'],
+    [1, 30000, 'R$ 300,00', '1 cofre'],
+    [2, 500000, 'R$ 5.000,00', '2 cofres'],
+  ])(
+    'coluna Em cofres com %i cofre(s)',
+    (quantidade, guardado, valor, detalhe) => {
+      const tree = renderizar(
+        resumoCom({guardadoCofresCentavos: guardado}),
+        quantidade,
+      );
+      const coluna = porId(tree, 'em-cofres');
 
-    expect(textoDe(linha)).toBe('Disponível -R$ 200,00 · R$ 500,00 em cofres');
-    expect(corDe(porId(tree, 'saldo-disponivel-valor'))).toBe('#FF6B6B');
-  });
-
-  it('não mostra a taxa de poupança sem receitas no mês', () => {
-    const tree = renderizar(resumoCom({}, []));
-
-    expect(existe(tree, 'sobra-mes-detalhe')).toBe(false);
-  });
+      expect(textoDe(coluna)).toBe(valor);
+      expect(corDe(coluna)).toBe('#64B5F6');
+      expect(textoDe(porId(tree, 'em-cofres-detalhe'))).toBe(detalhe);
+      expect(
+        tree.root.findAll(
+          no =>
+            no.props.accessibilityLabel === `Em cofres: ${valor}, ${detalhe}`,
+        ),
+      ).not.toHaveLength(0);
+    },
+  );
 
   it('desenha as barras proporcionais com rótulo acessível por mês', () => {
     const tree = renderizar(resumoCom());

@@ -30,8 +30,8 @@ it('abre o banco local e mostra o painel zerado sem aviso de erro', async () => 
   const texto = (id: string) =>
     [tree.root.findByProps({testID: id}).props.children].flat().join('');
   expect(
-    tree.root.findByProps({testID: 'saldo-atual'}).props.accessibilityLabel,
-  ).toBe('Saldo atual: R$ 0,00');
+    tree.root.findByProps({testID: 'disponivel'}).props.accessibilityLabel,
+  ).toBe('Disponível: R$ 0,00');
   expect(texto('receitas-mes')).toBe('+R$ 0,00');
   expect(tree.root.findAllByProps({testID: 'grafico-vazio'})).not.toEqual([]);
   expect(tree.root.findAllByProps({testID: 'selo-variacao'})).toEqual([]);
