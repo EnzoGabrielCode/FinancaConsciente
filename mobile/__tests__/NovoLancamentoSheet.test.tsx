@@ -918,7 +918,7 @@ describe('HomeScreen: dashboard', () => {
       {...despesa, data: hojeISO(), valorCentavos: 20000},
     ]);
     await renderizar(repositorio);
-    expect(textoDe(porId('disponivel'))).toBe('R$ -200,00');
+    expect(textoDe(porId('saldo-atual'))).toBe('R$ -200,00');
 
     await tocar('botao-novo-lancamento');
     await tocar('tipo-receita');
@@ -926,14 +926,14 @@ describe('HomeScreen: dashboard', () => {
     await tocar('categoria-salario');
     await tocar('botao-salvar');
 
-    expect(textoDe(porId('disponivel'))).toBe('R$ 1.000,00');
+    expect(textoDe(porId('saldo-atual'))).toBe('R$ 1.000,00');
     expect(textoDe(porId('receitas-mes'))).toBe('+R$ 1.200,00');
     expect(textoDe(porId('despesas-mes'))).toBe('-R$ 200,00');
 
     await tocar('excluir-1');
     await tocar('confirmar-exclusao');
 
-    expect(textoDe(porId('disponivel'))).toBe('R$ 1.200,00');
+    expect(textoDe(porId('saldo-atual'))).toBe('R$ 1.200,00');
     expect(textoDe(porId('despesas-mes'))).toBe('-R$ 0,00');
   });
 
@@ -984,7 +984,7 @@ describe('HomeScreen: dashboard', () => {
       await refresh.props.onRefresh();
     });
 
-    expect(textoDe(porId('disponivel'))).toBe('R$ -89,90');
+    expect(textoDe(porId('saldo-atual'))).toBe('R$ -89,90');
   });
 });
 
@@ -1106,8 +1106,7 @@ describe('HomeScreen: cofres virtuais', () => {
 
     await tocar('cofres-voltar');
     expect(existe('cofres-screen')).toBe(false);
-    expect(textoDe(porId('saldo-total'))).toBe('Saldo total R$ 1.000,00');
-    expect(textoDe(porId('disponivel'))).toBe('R$ 700,00');
+    expect(textoDe(porId('saldo-atual'))).toBe('R$ 700,00');
     expect(textoDe(porId('em-cofres'))).toBe('R$ 300,00');
   });
 
@@ -1136,7 +1135,7 @@ describe('HomeScreen: cofres virtuais', () => {
       data: hojeISO(),
     });
     await renderizar(repositorio);
-    expect(textoDe(porId('disponivel'))).toBe('R$ 600,00');
+    expect(textoDe(porId('saldo-atual'))).toBe('R$ 600,00');
     expect(textoDe(porId('em-cofres'))).toBe('R$ 400,00');
 
     await tocar('cofre-mini-1');
@@ -1155,7 +1154,7 @@ describe('HomeScreen: cofres virtuais', () => {
       'Cofre excluído · R$ 400,00 voltaram para o disponível',
     );
     expect(textoDe(porId('cofres-disponivel'))).toBe('Disponível: R$ 1.000,00');
-    expect(textoDe(porId('disponivel'))).toBe('R$ 1.000,00');
+    expect(textoDe(porId('saldo-atual'))).toBe('R$ 1.000,00');
     expect(textoDe(porId('em-cofres'))).toBe('R$ 0,00');
     expect(textoDe(porId('em-cofres-detalhe'))).toBe('Nenhum cofre');
   });

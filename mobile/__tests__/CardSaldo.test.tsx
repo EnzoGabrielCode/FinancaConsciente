@@ -66,30 +66,34 @@ const corDe = (no: ReactTestInstance) =>
   StyleSheet.flatten(no.props.style).color;
 
 describe('CardSaldo', () => {
-  it('mostra o título DISPONÍVEL', () => {
+  it('mostra o título SALDO ATUAL', () => {
     const tree = renderizar(resumoCom());
 
-    expect(tree.root.findAllByProps({children: 'DISPONÍVEL'})).not.toHaveLength(
-      0,
-    );
-    expect(tree.root.findAllByProps({children: 'SALDO ATUAL'})).toHaveLength(0);
+    expect(
+      tree.root.findAllByProps({children: 'SALDO ATUAL'}),
+    ).not.toHaveLength(0);
+    expect(tree.root.findAllByProps({children: 'DISPONÍVEL'})).toHaveLength(0);
   });
 
-  it('mostra o disponível positivo dividido em moeda, inteiros e centavos', () => {
+  it('o número grande é o saldo sem o valor dos cofres, em verde', () => {
     const tree = renderizar(
       resumoCom({guardadoCofresCentavos: 500000, disponivelCentavos: 1962000}),
       1,
     );
-    const disponivel = porId(tree, 'disponivel');
+    const saldo = porId(tree, 'saldo-atual');
 
-    expect(textoDe(disponivel)).toBe('R$ 19.620,00');
-    expect(disponivel.props.accessibilityLabel).toBe(
-      'Disponível: R$ 19.620,00',
-    );
-    expect(corDe(porId(tree, 'disponivel-inteiros'))).toBe('#39FF84');
+    expect(textoDe(saldo)).toBe('R$ 19.620,00');
+    expect(saldo.props.accessibilityLabel).toBe('Saldo atual: R$ 19.620,00');
+    expect(corDe(porId(tree, 'saldo-inteiros'))).toBe(CORES.verde);
   });
 
-  it('mostra o disponível negativo em #FF6B6B com "-" antes dos inteiros', () => {
+  it('sem cofres o número grande é o próprio saldo', () => {
+    const tree = renderizar(resumoCom());
+
+    expect(textoDe(porId(tree, 'saldo-atual'))).toBe('R$ 24.620,00');
+  });
+
+  it('mostra o saldo negativo em vermelho com "-" antes dos inteiros', () => {
     const tree = renderizar(
       resumoCom({
         saldoAtualCentavos: 30000,
@@ -98,14 +102,14 @@ describe('CardSaldo', () => {
       }),
       1,
     );
-    const disponivel = porId(tree, 'disponivel');
+    const saldo = porId(tree, 'saldo-atual');
 
-    expect(textoDe(disponivel)).toBe('R$ -200,00');
-    expect(disponivel.props.accessibilityLabel).toBe('Disponível: -R$ 200,00');
-    expect(corDe(porId(tree, 'disponivel-inteiros'))).toBe('#FF6B6B');
+    expect(textoDe(saldo)).toBe('R$ -200,00');
+    expect(saldo.props.accessibilityLabel).toBe('Saldo atual: -R$ 200,00');
+    expect(corDe(porId(tree, 'saldo-inteiros'))).toBe(CORES.vermelho);
   });
 
-  it('mostra o saldo total em 12 #9E9E9E com o selo ao lado', () => {
+  it('não mostra o saldo total nem o selo de variação', () => {
     const tree = renderizar(
       resumoCom({
         saldoAtualCentavos: 650000,
@@ -113,53 +117,12 @@ describe('CardSaldo', () => {
         guardadoCofresCentavos: 500000,
         variacaoSaldo: 0.067,
       }),
-      1,
-    );
-    const linha = porId(tree, 'saldo-total');
-    const estilo = StyleSheet.flatten(linha.props.style);
-
-    expect(textoDe(linha)).toBe('Saldo total R$ 6.500,00');
-    expect(linha.props.accessibilityLabel).toBe('Saldo total: R$ 6.500,00');
-    expect(estilo.fontSize).toBe(12);
-    expect(estilo.color).toBe('#9E9E9E');
-    expect(
-      linha.parent?.findAll(no => no.props.testID === 'selo-variacao'),
-    ).not.toHaveLength(0);
-  });
-
-  it('sem variação mostra só o texto do saldo total', () => {
-    const tree = renderizar(resumoCom({variacaoSaldo: null}));
-
-    expect(textoDe(porId(tree, 'saldo-total'))).toBe(
-      'Saldo total R$ 24.620,00',
-    );
-    expect(existe(tree, 'selo-variacao')).toBe(false);
-  });
-
-  it('mostra o selo positivo em verde com seta para cima', () => {
-    const tree = renderizar(resumoCom({variacaoSaldo: 0.067}));
-    const selo = porId(tree, 'selo-variacao');
-
-    expect(textoDe(selo)).toBe('+6,7% ↑');
-    expect(corDe(selo)).toBe(CORES.verde);
-  });
-
-  it('mostra o selo negativo em vermelho com seta para baixo', () => {
-    const tree = renderizar(resumoCom({variacaoSaldo: -0.032}));
-    const selo = porId(tree, 'selo-variacao');
-
-    expect(textoDe(selo)).toBe('-3,2% ↓');
-    expect(corDe(selo)).toBe(CORES.vermelho);
-  });
-
-  it('não mostra mais a linha antiga de disponível e cofres', () => {
-    const tree = renderizar(
-      resumoCom({guardadoCofresCentavos: 500000, disponivelCentavos: 1962000}),
       2,
     );
 
+    expect(existe(tree, 'saldo-total')).toBe(false);
+    expect(existe(tree, 'selo-variacao')).toBe(false);
     expect(existe(tree, 'saldo-disponivel')).toBe(false);
-    expect(existe(tree, 'saldo-atual')).toBe(false);
   });
 
   it('mostra receitas e despesas do mês', () => {
