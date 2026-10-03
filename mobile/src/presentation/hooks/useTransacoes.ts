@@ -12,6 +12,7 @@ import {
 import type {ResumoDashboard} from '../../domain/entities/Dashboard';
 import type {DadosTransacao, Transacao} from '../../domain/entities/Transacao';
 import type {ArmazenamentoComprovantes} from '../../domain/repositories/ArmazenamentoComprovantes';
+import type {CofreRepository} from '../../domain/repositories/CofreRepository';
 import type {TransacaoRepository} from '../../domain/repositories/TransacaoRepository';
 import {mensagemDeErro} from '../utils/mensagemDeErro';
 
@@ -34,6 +35,7 @@ export interface UseTransacoes extends EstadoTransacoes {
 export function useTransacoes(
   repositorio: TransacaoRepository,
   armazenamento: ArmazenamentoComprovantes,
+  cofres?: CofreRepository,
 ): UseTransacoes {
   const lancamentos = useMemo(
     () => new LancamentosComComprovante(repositorio, armazenamento),
@@ -68,11 +70,13 @@ export function useTransacoes(
         saldoAtualCentavos,
         saldoFimMesAnteriorCentavos,
         totaisPorMes,
+        totalGuardadoCentavos,
       ] = await Promise.all([
         repositorio.listarRecentes(LIMITE_RECENTES),
         repositorio.saldoAte(hoje),
         repositorio.saldoAte(ultimoDiaDoMesAnterior(anoMesAtual)),
         repositorio.totaisPorMes(primeiroMes, anoMesAtual),
+        cofres ? cofres.totalGuardado() : Promise.resolve(0),
       ]);
       if (ehAMaisRecente()) {
         setEstado({
@@ -82,6 +86,7 @@ export function useTransacoes(
             saldoFimMesAnteriorCentavos,
             totaisPorMes,
             anoMesAtual,
+            totalGuardadoCentavos,
           }),
           carregando: false,
           erro: null,
@@ -96,7 +101,7 @@ export function useTransacoes(
         }));
       }
     }
-  }, [repositorio]);
+  }, [repositorio, cofres]);
 
   useEffect(() => {
     recarregar();
