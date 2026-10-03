@@ -29,6 +29,7 @@ import {
   formatarDigitado,
   paraCentavos,
 } from '../../domain/dinheiro';
+import type {PossivelDuplicata} from '../../domain/entities/Duplicata';
 import type {
   DadosTransacao,
   Recorrencia,
@@ -46,6 +47,7 @@ import {
 } from '../servicos/seletorImagem';
 import {CORES, FONTE_MONO, comAlfa, corDoTipo} from '../theme/cores';
 import {mensagemDeErro} from '../utils/mensagemDeErro';
+import AlertaDuplicataDialog from './AlertaDuplicataDialog';
 import ConfirmarExclusaoDialog from './ConfirmarExclusaoDialog';
 import TecladoNumerico from './TecladoNumerico';
 
@@ -55,7 +57,15 @@ interface Props {
   onFechar: () => void;
   onSalvar: (dados: DadosTransacao) => Promise<void>;
   onExcluir?: (id: number) => Promise<void>;
+  onVerificarDuplicatas?: (
+    dados: DadosTransacao,
+  ) => Promise<PossivelDuplicata[]>;
   seletorImagem?: SeletorImagem;
+}
+
+interface AlertaDuplicata {
+  dados: DadosTransacao;
+  duplicatas: PossivelDuplicata[];
 }
 
 type OrigemMenu = 'camera' | 'trocar';
@@ -66,6 +76,7 @@ function NovoLancamentoSheet({
   onFechar,
   onSalvar,
   onExcluir,
+  onVerificarDuplicatas,
   seletorImagem = seletorImagemPadrao,
 }: Props): React.JSX.Element {
   const emEdicao = Boolean(transacao);
@@ -85,6 +96,7 @@ function NovoLancamentoSheet({
   const [miniaturaFalhou, setMiniaturaFalhou] = useState(false);
   const [menuAberto, setMenuAberto] = useState<OrigemMenu | null>(null);
   const [visualizando, setVisualizando] = useState(false);
+  const [alerta, setAlerta] = useState<AlertaDuplicata | null>(null);
 
   useEffect(() => {
     if (!visivel) {
@@ -104,6 +116,7 @@ function NovoLancamentoSheet({
     setMiniaturaFalhou(false);
     setMenuAberto(null);
     setVisualizando(false);
+    setAlerta(null);
   }, [visivel, transacao]);
 
   const ocupado = salvando || excluindo;
@@ -192,14 +205,47 @@ function NovoLancamentoSheet({
       setErros(resultado.erros);
       return;
     }
+    const dados = resultado.dados;
+    setSalvando(true);
+    if (!emEdicao && onVerificarDuplicatas) {
+      const duplicatas = await buscarDuplicatas(dados);
+      if (duplicatas.length > 0) {
+        setAlerta({dados, duplicatas});
+        setSalvando(false);
+        return;
+      }
+    }
+    await persistir(dados);
+  };
+
+  const buscarDuplicatas = async (
+    dados: DadosTransacao,
+  ): Promise<PossivelDuplicata[]> => {
+    try {
+      return (await onVerificarDuplicatas?.(dados)) ?? [];
+    } catch {
+      // O alerta é só uma ajuda: se a verificação falhar, o lançamento segue.
+      return [];
+    }
+  };
+
+  const persistir = async (dados: DadosTransacao) => {
     setSalvando(true);
     try {
-      await onSalvar(resultado.dados);
+      await onSalvar(dados);
     } catch (erro) {
       setMensagemErro(mensagemDeErro(erro));
     } finally {
       setSalvando(false);
     }
+  };
+
+  const salvarMesmoAssim = () => {
+    if (!alerta) {
+      return;
+    }
+    setAlerta(null);
+    persistir(alerta.dados);
   };
 
   const excluir = async () => {
@@ -544,6 +590,15 @@ function NovoLancamentoSheet({
           carregando={excluindo}
           onCancelar={() => setConfirmandoExclusao(false)}
           onConfirmar={excluir}
+        />
+        <AlertaDuplicataDialog
+          visivel={alerta !== null}
+          duplicatas={alerta?.duplicatas ?? []}
+          valorCentavos={alerta?.dados.valorCentavos ?? 0}
+          data={alerta?.dados.data ?? hojeISO()}
+          salvando={salvando}
+          onRevisar={() => setAlerta(null)}
+          onSalvarMesmoAssim={salvarMesmoAssim}
         />
       </Portal.Host>
 

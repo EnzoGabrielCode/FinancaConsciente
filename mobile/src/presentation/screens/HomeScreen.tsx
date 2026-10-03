@@ -338,6 +338,7 @@ function HomeScreen({
         onFechar={fecharSheet}
         onSalvar={salvar}
         onExcluir={excluirDoSheet}
+        onVerificarDuplicatas={lancamentos.verificarDuplicatas}
         seletorImagem={seletorImagem}
       />
 
