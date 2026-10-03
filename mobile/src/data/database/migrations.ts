@@ -65,6 +65,13 @@ export const MIGRATIONS: Migration[] = [
       'CREATE INDEX IF NOT EXISTS idx_movimentos_cofre ON movimentos_cofre (cofre_id)',
     ],
   },
+  {
+    version: 5,
+    description: 'Cria o índice da busca de despesas duplicadas',
+    statements: [
+      'CREATE INDEX IF NOT EXISTS idx_transacoes_duplicatas ON transacoes (tipo, valor_centavos, data)',
+    ],
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;
