@@ -12,6 +12,8 @@ export interface MesSerie extends TotaisMes {
 
 export interface ResumoDashboard {
   saldoAtualCentavos: number;
+  guardadoCofresCentavos: number;
+  disponivelCentavos: number;
   receitasMesCentavos: number;
   despesasMesCentavos: number;
   poupadoMesCentavos: number;

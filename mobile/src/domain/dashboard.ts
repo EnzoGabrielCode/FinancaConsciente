@@ -9,6 +9,7 @@ export interface DadosDashboard {
   totaisPorMes: TotaisMes[];
   anoMesAtual: string;
   meses?: number;
+  totalGuardadoCentavos?: number;
 }
 
 function proporcao(valor: number, maior: number): number {
@@ -21,6 +22,7 @@ export function montarDashboard({
   totaisPorMes,
   anoMesAtual,
   meses = MESES_GRAFICO,
+  totalGuardadoCentavos = 0,
 }: DadosDashboard): ResumoDashboard {
   const porMes = new Map(totaisPorMes.map(totais => [totais.anoMes, totais]));
   const totaisDoMes = (anoMes: string): TotaisMes =>
@@ -37,6 +39,8 @@ export function montarDashboard({
 
   return {
     saldoAtualCentavos,
+    guardadoCofresCentavos: totalGuardadoCentavos,
+    disponivelCentavos: saldoAtualCentavos - totalGuardadoCentavos,
     receitasMesCentavos: atual.receitasCentavos,
     despesasMesCentavos: atual.despesasCentavos,
     poupadoMesCentavos,

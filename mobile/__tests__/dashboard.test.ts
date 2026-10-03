@@ -173,4 +173,35 @@ describe('montarDashboard', () => {
       '2026-02',
     ]);
   });
+
+  it('sem cofres o disponível é o próprio saldo e o guardado é zero', () => {
+    const resumo = montar([], 150000);
+    expect(resumo.guardadoCofresCentavos).toBe(0);
+    expect(resumo.disponivelCentavos).toBe(150000);
+  });
+
+  it('desconta o total guardado nos cofres do disponível sem mudar o saldo', () => {
+    const resumo = montarDashboard({
+      saldoAtualCentavos: 150000,
+      saldoFimMesAnteriorCentavos: 0,
+      totaisPorMes: [],
+      anoMesAtual: '2026-10',
+      totalGuardadoCentavos: 40000,
+    });
+    expect(resumo.saldoAtualCentavos).toBe(150000);
+    expect(resumo.guardadoCofresCentavos).toBe(40000);
+    expect(resumo.disponivelCentavos).toBe(110000);
+  });
+
+  it('o disponível fica negativo se a pessoa gastar o que estava guardado', () => {
+    const resumo = montarDashboard({
+      saldoAtualCentavos: 30000,
+      saldoFimMesAnteriorCentavos: 0,
+      totaisPorMes: [],
+      anoMesAtual: '2026-10',
+      totalGuardadoCentavos: 50000,
+    });
+    expect(resumo.disponivelCentavos).toBe(-20000);
+    expect(resumo.guardadoCofresCentavos).toBe(50000);
+  });
 });
