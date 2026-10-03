@@ -30,6 +30,7 @@ import {darkTheme} from '../src/presentation/theme';
 
 class RepositorioEmMemoria implements TransacaoRepository {
   transacoes: Transacao[] = [];
+  criadoEm = new Map<number, string>();
   private proximoId = 1;
 
   constructor(iniciais: Transacao[] = []) {
@@ -50,6 +51,7 @@ class RepositorioEmMemoria implements TransacaoRepository {
   criar = jest.fn(async (dados: DadosTransacao) => {
     const id = this.proximoId++;
     this.transacoes.push({...dados, id, sincronizado: false});
+    this.criadoEm.set(id, new Date().toISOString());
     return id;
   });
 
@@ -96,6 +98,22 @@ class RepositorioEmMemoria implements TransacaoRepository {
       a.anoMes.localeCompare(b.anoMes),
     );
   });
+
+  buscarCandidatasDuplicata = jest.fn(
+    async (tipo: string, valorCentavos: number, data: string) =>
+      this.transacoes
+        .filter(
+          t =>
+            t.tipo === tipo &&
+            t.valorCentavos === valorCentavos &&
+            t.data === data,
+        )
+        .map(transacao => ({
+          transacao,
+          criadoEm:
+            this.criadoEm.get(transacao.id) ?? '2000-01-01T00:00:00.000Z',
+        })),
+  );
 }
 
 class CofresEmMemoria implements CofreRepository {
