@@ -108,7 +108,13 @@ function CofresScreen({
     setExcluindo(true);
     try {
       await cofres.excluir(paraExcluir.id);
-      setAviso('Cofre excluído');
+      setAviso(
+        paraExcluir.saldoCentavos > 0
+          ? `Cofre excluído · ${formatarCentavos(
+              paraExcluir.saldoCentavos,
+            )} voltaram para o disponível`
+          : 'Cofre excluído',
+      );
     } catch (erro) {
       setAviso(mensagemDeErro(erro));
     } finally {

@@ -8,6 +8,7 @@ import GraficoMensal from './GraficoMensal';
 
 interface Props {
   resumo: ResumoDashboard;
+  quantidadeCofres?: number;
 }
 
 function partesDoSaldo(centavos: number) {
@@ -43,6 +44,7 @@ interface ColunaProps {
   rotulo: string;
   valor: string;
   cor: string;
+  rotuloAcessivel?: string;
   detalhe?: string | null;
   idValor: string;
 }
@@ -51,6 +53,7 @@ function Coluna({
   rotulo,
   valor,
   cor,
+  rotuloAcessivel = `${rotulo} do mês`,
   detalhe,
   idValor,
 }: ColunaProps): React.JSX.Element {
@@ -58,7 +61,7 @@ function Coluna({
     <View
       style={styles.coluna}
       accessible
-      accessibilityLabel={`${rotulo} do mês: ${valor}${
+      accessibilityLabel={`${rotuloAcessivel}: ${valor}${
         detalhe ? `, ${detalhe}` : ''
       }`}>
       <Text style={styles.rotuloColuna}>{rotulo}</Text>
@@ -78,10 +81,12 @@ function Coluna({
   );
 }
 
-function CardSaldo({resumo}: Props): React.JSX.Element {
+function CardSaldo({resumo, quantidadeCofres = 0}: Props): React.JSX.Element {
   const saldo = partesDoSaldo(resumo.saldoAtualCentavos);
   const corSaldo = resumo.saldoAtualCentavos < 0 ? CORES.vermelho : CORES.verde;
-  const poupadoNegativo = resumo.poupadoMesCentavos < 0;
+  const sobraNegativa = resumo.poupadoMesCentavos < 0;
+  const disponivel = formatarCentavos(resumo.disponivelCentavos);
+  const emCofres = formatarCentavos(resumo.guardadoCofresCentavos);
 
   return (
     <View style={styles.card} testID="card-saldo">
@@ -108,17 +113,25 @@ function CardSaldo({resumo}: Props): React.JSX.Element {
         <Text style={styles.centavos}>{saldo.decimais}</Text>
       </Text>
 
-      {resumo.guardadoCofresCentavos > 0 && (
-        <Text style={styles.linhaCofres} testID="saldo-disponivel">
+      {quantidadeCofres > 0 && (
+        <Text
+          style={styles.linhaCofres}
+          accessibilityLabel={`Disponível: ${disponivel}, ${emCofres} em cofres`}
+          testID="saldo-disponivel">
           <Text
-            style={
-              resumo.disponivelCentavos < 0 ? styles.disponivelNegativo : null
-            }
+            style={[
+              styles.disponivel,
+              {
+                color:
+                  resumo.disponivelCentavos < 0 ? CORES.vermelho : CORES.verde,
+              },
+            ]}
             testID="saldo-disponivel-valor">
-            {formatarCentavos(resumo.disponivelCentavos)} disponível
+            Disponível {disponivel}
           </Text>
-          {' · '}
-          {formatarCentavos(resumo.guardadoCofresCentavos)} em cofres
+          <Text style={styles.emCofres} testID="saldo-em-cofres">
+            {` · ${emCofres} em cofres`}
+          </Text>
         </Text>
       )}
 
@@ -136,9 +149,10 @@ function CardSaldo({resumo}: Props): React.JSX.Element {
           idValor="despesas-mes"
         />
         <Coluna
-          rotulo="Poupado"
+          rotulo="Sobra do mês"
+          rotuloAcessivel="Sobra do mês, receitas menos despesas"
           valor={formatarCentavos(resumo.poupadoMesCentavos)}
-          cor={poupadoNegativo ? CORES.vermelho : CORES.azul}
+          cor={sobraNegativa ? CORES.vermelho : CORES.azul}
           detalhe={
             resumo.taxaPoupanca === null
               ? null
@@ -147,7 +161,7 @@ function CardSaldo({resumo}: Props): React.JSX.Element {
                   sinalPositivo: false,
                 })} da renda`
           }
-          idValor="poupado-mes"
+          idValor="sobra-mes"
         />
       </View>
 
@@ -201,12 +215,14 @@ const styles = StyleSheet.create({
     color: CORES.textoSecundario,
   },
   linhaCofres: {
-    marginTop: -12,
-    fontSize: 12,
-    color: CORES.textoSecundario,
+    marginTop: -10,
+    fontSize: 14,
   },
-  disponivelNegativo: {
-    color: CORES.vermelho,
+  disponivel: {
+    fontWeight: 'bold',
+  },
+  emCofres: {
+    color: CORES.textoSecundario,
   },
   colunas: {
     flexDirection: 'row',

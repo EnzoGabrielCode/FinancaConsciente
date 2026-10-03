@@ -667,7 +667,7 @@ describe('HomeScreen: dashboard', () => {
     expect(textoDe(porId('saldo-atual'))).toBe('R$ 1.000,00');
     expect(textoDe(porId('receitas-mes'))).toBe('+R$ 1.200,00');
     expect(textoDe(porId('despesas-mes'))).toBe('-R$ 200,00');
-    expect(textoDe(porId('poupado-mes-detalhe'))).toBe('83% da renda');
+    expect(textoDe(porId('sobra-mes-detalhe'))).toBe('83% da renda');
 
     await tocar('excluir-1');
     await tocar('confirmar-exclusao');
@@ -813,6 +813,9 @@ describe('HomeScreen: cofres virtuais', () => {
     expect(textoDe(porId('cofre-meta-1'))).toBe('0% · Meta: R$ 8.000,00');
     expect(existe('cofre-mini-1')).toBe(true);
     expect(existe('cofre-criar-atalho')).toBe(false);
+    expect(textoDe(porId('saldo-disponivel'))).toBe(
+      'Disponível R$ 1.000,00 · R$ 0,00 em cofres',
+    );
   });
 
   it('guardar diminui o disponível sem mudar o saldo e atualiza o dashboard', async () => {
@@ -845,7 +848,7 @@ describe('HomeScreen: cofres virtuais', () => {
     expect(existe('cofres-screen')).toBe(false);
     expect(textoDe(porId('saldo-atual'))).toBe('R$ 1.000,00');
     expect(textoDe(porId('saldo-disponivel'))).toBe(
-      'R$ 700,00 disponível · R$ 300,00 em cofres',
+      'Disponível R$ 700,00 · R$ 300,00 em cofres',
     );
   });
 
@@ -875,7 +878,7 @@ describe('HomeScreen: cofres virtuais', () => {
     });
     await renderizar(repositorio);
     expect(textoDe(porId('saldo-disponivel'))).toBe(
-      'R$ 600,00 disponível · R$ 400,00 em cofres',
+      'Disponível R$ 600,00 · R$ 400,00 em cofres',
     );
 
     await tocar('cofre-mini-1');
@@ -890,9 +893,24 @@ describe('HomeScreen: cofres virtuais', () => {
     await tocar('confirmar-exclusao');
 
     expect(cofresRepo.excluir).toHaveBeenCalledWith(1);
-    expect(textoDe(porId('cofres-snackbar'))).toBe('Cofre excluído');
+    expect(textoDe(porId('cofres-snackbar'))).toBe(
+      'Cofre excluído · R$ 400,00 voltaram para o disponível',
+    );
     expect(textoDe(porId('cofres-disponivel'))).toBe('Disponível: R$ 1.000,00');
     expect(existe('saldo-disponivel')).toBe(false);
     expect(textoDe(porId('saldo-atual'))).toBe('R$ 1.000,00');
+  });
+
+  it('excluir um cofre sem saldo mostra só "Cofre excluído"', async () => {
+    await criarViagem();
+    await renderizar(repositorio);
+
+    await tocar('cofre-mini-1');
+    await tocar('cofre-menu-1');
+    await tocar('menu-cofre-excluir');
+    await tocar('confirmar-exclusao');
+
+    expect(cofresRepo.excluir).toHaveBeenCalledWith(1);
+    expect(textoDe(porId('cofres-snackbar'))).toBe('Cofre excluído');
   });
 });

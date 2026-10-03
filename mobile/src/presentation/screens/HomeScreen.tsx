@@ -201,7 +201,10 @@ function HomeScreen({
           )}
 
           {lancamentos.resumo ? (
-            <CardSaldo resumo={lancamentos.resumo} />
+            <CardSaldo
+              resumo={lancamentos.resumo}
+              quantidadeCofres={cofres.cofres.length}
+            />
           ) : (
             lancamentos.carregando && (
               <ActivityIndicator
