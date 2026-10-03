@@ -125,7 +125,9 @@ function TransacaoItem({
             receita ? 'receita' : 'despesa'
           } de ${formatarCentavos(
             transacao.valorCentavos,
-          )}, ${formatarDataCurta(transacao.data)}${fixa ? ', fixa' : ''}`}
+          )}, ${formatarDataCurta(transacao.data)}${fixa ? ', fixa' : ''}${
+            transacao.comprovanteUri !== null ? ', tem comprovante' : ''
+          }`}
           accessibilityHint="Toque para editar. Deslize para a esquerda para excluir."
           accessibilityActions={ACOES_ACESSIBILIDADE}
           onAccessibilityAction={acaoAcessibilidade}
@@ -146,6 +148,18 @@ function TransacaoItem({
               <Text style={styles.data}>
                 {formatarDataCurta(transacao.data)}
               </Text>
+              {transacao.comprovanteUri !== null && (
+                <View
+                  accessible
+                  accessibilityLabel="Tem comprovante"
+                  testID="icone-comprovante">
+                  <Icon
+                    source="paperclip"
+                    size={12}
+                    color={CORES.textoSecundario}
+                  />
+                </View>
+              )}
               {fixa && (
                 <Text style={styles.seloFixa} testID="selo-fixa">
                   Fixa

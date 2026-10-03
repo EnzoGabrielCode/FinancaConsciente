@@ -10,6 +10,7 @@ export interface Transacao {
   data: string;
   categoria: string;
   recorrencia: Recorrencia;
+  comprovanteUri: string | null;
   sincronizado: boolean;
 }
 

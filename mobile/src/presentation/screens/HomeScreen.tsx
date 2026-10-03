@@ -16,12 +16,14 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {DATABASE_NAME} from '../../data/database/connection';
 import {formatarCentavos} from '../../domain/dinheiro';
 import type {DadosTransacao, Transacao} from '../../domain/entities/Transacao';
+import type {ArmazenamentoComprovantes} from '../../domain/repositories/ArmazenamentoComprovantes';
 import type {TransacaoRepository} from '../../domain/repositories/TransacaoRepository';
 import ConfirmarExclusaoDialog from '../components/ConfirmarExclusaoDialog';
 import NovoLancamentoSheet from '../components/NovoLancamentoSheet';
 import TransacaoItem from '../components/TransacaoItem';
 import {useDatabase} from '../hooks/useDatabase';
 import {useTransacoes} from '../hooks/useTransacoes';
+import type {SeletorImagem} from '../servicos/seletorImagem';
 import {CORES, FONTE_MONO} from '../theme/cores';
 import {mensagemDeErro} from '../utils/mensagemDeErro';
 
@@ -35,6 +37,8 @@ function ReceitasIcon(props: {size: number}): React.JSX.Element {
 
 interface Props {
   repositorio: TransacaoRepository;
+  armazenamento: ArmazenamentoComprovantes;
+  seletorImagem?: SeletorImagem;
 }
 
 interface EstadoSheet {
@@ -42,11 +46,15 @@ interface EstadoSheet {
   transacao: Transacao | null;
 }
 
-function HomeScreen({repositorio}: Props): React.JSX.Element {
+function HomeScreen({
+  repositorio,
+  armazenamento,
+  seletorImagem,
+}: Props): React.JSX.Element {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const database = useDatabase();
-  const lancamentos = useTransacoes(repositorio);
+  const lancamentos = useTransacoes(repositorio, armazenamento);
 
   const [sheet, setSheet] = useState<EstadoSheet>({
     visivel: false,
@@ -233,6 +241,7 @@ function HomeScreen({repositorio}: Props): React.JSX.Element {
         onFechar={fecharSheet}
         onSalvar={salvar}
         onExcluir={excluirDoSheet}
+        seletorImagem={seletorImagem}
       />
 
       <ConfirmarExclusaoDialog

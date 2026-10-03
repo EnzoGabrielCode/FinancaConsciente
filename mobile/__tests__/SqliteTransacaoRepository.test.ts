@@ -1,11 +1,11 @@
-import {beforeEach, describe, expect, it} from '@jest/globals';
+import {beforeEach, describe, expect, it, jest} from '@jest/globals';
 import SQLite, {type SQLiteDatabase} from 'react-native-sqlite-storage';
 
 import {SqliteTransacaoRepository} from '../src/data/repositories/SqliteTransacaoRepository';
 import type {DadosTransacao} from '../src/domain/entities/Transacao';
 
 type MockDatabase = SQLiteDatabase & {
-  executeSql: {mock: {calls: unknown[][]}};
+  executeSql: jest.Mock & {mock: {calls: unknown[][]}};
 };
 
 const createDb = () =>
@@ -20,6 +20,7 @@ const dados: DadosTransacao = {
   descricao: 'Salário',
   data: '2026-09-30',
   recorrencia: 'fixa',
+  comprovanteUri: null,
 };
 
 const normalizar = (sql: unknown) => String(sql).replace(/\s+/g, ' ').trim();
@@ -44,7 +45,7 @@ describe('SqliteTransacaoRepository', () => {
   it('cria com INSERT parametrizado e devolve o id', async () => {
     await expect(repositorio.criar(dados)).resolves.toBe(1);
     expect(ultimaChamada()).toEqual({
-      sql: 'INSERT INTO transacoes (tipo, descricao, valor_centavos, data, categoria, recorrencia, sincronizado) VALUES (?, ?, ?, ?, ?, ?, 0)',
+      sql: 'INSERT INTO transacoes (tipo, descricao, valor_centavos, data, categoria, recorrencia, comprovante_uri, sincronizado) VALUES (?, ?, ?, ?, ?, ?, ?, 0)',
       parametros: [
         'receita',
         'Salário',
@@ -52,14 +53,29 @@ describe('SqliteTransacaoRepository', () => {
         '2026-09-30',
         'salario',
         'fixa',
+        null,
       ],
     });
+  });
+
+  it('grava o comprovante_uri da despesa como parâmetro no INSERT', async () => {
+    const uri = "file:///docs/comprovantes/it's.jpg";
+    await repositorio.criar({
+      ...dados,
+      tipo: 'despesa',
+      categoria: 'alimentacao',
+      recorrencia: 'variavel',
+      comprovanteUri: uri,
+    });
+    const {sql, parametros} = ultimaChamada();
+    expect(sql).not.toContain(uri);
+    expect(parametros.at(-1)).toBe(uri);
   });
 
   it('atualiza pelo id e marca como não sincronizado', async () => {
     await repositorio.atualizar(7, {...dados, valorCentavos: 130000});
     expect(ultimaChamada()).toEqual({
-      sql: 'UPDATE transacoes SET tipo = ?, descricao = ?, valor_centavos = ?, data = ?, categoria = ?, recorrencia = ?, sincronizado = 0 WHERE id = ?',
+      sql: 'UPDATE transacoes SET tipo = ?, descricao = ?, valor_centavos = ?, data = ?, categoria = ?, recorrencia = ?, comprovante_uri = ?, sincronizado = 0 WHERE id = ?',
       parametros: [
         'receita',
         'Salário',
@@ -67,9 +83,59 @@ describe('SqliteTransacaoRepository', () => {
         '2026-09-30',
         'salario',
         'fixa',
+        null,
         7,
       ],
     });
+  });
+
+  it('atualiza o comprovante_uri com parâmetro', async () => {
+    await repositorio.atualizar(7, {
+      ...dados,
+      tipo: 'despesa',
+      comprovanteUri: 'file:///docs/comprovantes/novo.png',
+    });
+    expect(ultimaChamada().parametros.slice(-2)).toEqual([
+      'file:///docs/comprovantes/novo.png',
+      7,
+    ]);
+  });
+
+  it('busca por id e mapeia comprovante_uri para comprovanteUri', async () => {
+    const linha = {
+      id: 3,
+      tipo: 'despesa',
+      descricao: 'Mercado',
+      valor_centavos: 8990,
+      data: '2026-09-28',
+      categoria: 'alimentacao',
+      recorrencia: 'variavel',
+      comprovante_uri: 'file:///docs/comprovantes/a.jpg',
+      sincronizado: 1,
+    };
+    db.executeSql.mockImplementationOnce(async () => [
+      {rows: {length: 1, item: () => linha, raw: () => [linha]}},
+    ]);
+
+    await expect(repositorio.buscarPorId(3)).resolves.toEqual({
+      id: 3,
+      tipo: 'despesa',
+      descricao: 'Mercado',
+      valorCentavos: 8990,
+      data: '2026-09-28',
+      categoria: 'alimentacao',
+      recorrencia: 'variavel',
+      comprovanteUri: 'file:///docs/comprovantes/a.jpg',
+      sincronizado: true,
+    });
+    const {sql, parametros} = ultimaChamada();
+    expect(sql).toMatch(/comprovante_uri/);
+    expect(sql).toMatch(/WHERE id = \?$/);
+    expect(parametros).toEqual([3]);
+  });
+
+  it('buscarPorId devolve null quando não encontra', async () => {
+    await expect(repositorio.buscarPorId(99)).resolves.toBeNull();
   });
 
   it('exclui pelo id', async () => {

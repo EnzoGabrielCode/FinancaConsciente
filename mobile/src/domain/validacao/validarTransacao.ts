@@ -41,6 +41,10 @@ export function validarTransacao(dados: DadosTransacao): ResultadoValidacao {
     erros.recorrencia = 'Escolha se a receita é fixa ou variável.';
   }
 
+  if (dados.tipo === 'receita' && dados.comprovanteUri !== null) {
+    erros.comprovanteUri = 'Comprovante só pode ser anexado a despesas.';
+  }
+
   return {
     valido: Object.keys(erros).length === 0,
     erros,
