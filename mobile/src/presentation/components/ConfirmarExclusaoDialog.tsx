@@ -6,6 +6,8 @@ import {CORES} from '../theme/cores';
 interface Props {
   visivel: boolean;
   descricao?: string;
+  titulo?: string;
+  mensagem?: string;
   carregando?: boolean;
   onCancelar: () => void;
   onConfirmar: () => void;
@@ -14,6 +16,8 @@ interface Props {
 function ConfirmarExclusaoDialog({
   visivel,
   descricao,
+  titulo = 'Excluir lançamento?',
+  mensagem,
   carregando = false,
   onCancelar,
   onConfirmar,
@@ -24,13 +28,15 @@ function ConfirmarExclusaoDialog({
         visible={visivel}
         onDismiss={carregando ? undefined : onCancelar}
         testID="dialogo-exclusao">
-        <Dialog.Title>Excluir lançamento?</Dialog.Title>
+        <Dialog.Title testID="dialogo-exclusao-titulo">{titulo}</Dialog.Title>
         <Dialog.Content>
-          <Text variant="bodyMedium">
-            {descricao
-              ? `"${descricao}" será apagado`
-              : 'O lançamento será apagado'}{' '}
-            deste aparelho. Essa ação não pode ser desfeita.
+          <Text variant="bodyMedium" testID="dialogo-exclusao-mensagem">
+            {mensagem ??
+              `${
+                descricao
+                  ? `"${descricao}" será apagado`
+                  : 'O lançamento será apagado'
+              } deste aparelho. Essa ação não pode ser desfeita.`}
           </Text>
         </Dialog.Content>
         <Dialog.Actions>
