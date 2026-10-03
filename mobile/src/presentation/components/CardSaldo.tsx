@@ -108,6 +108,20 @@ function CardSaldo({resumo}: Props): React.JSX.Element {
         <Text style={styles.centavos}>{saldo.decimais}</Text>
       </Text>
 
+      {resumo.guardadoCofresCentavos > 0 && (
+        <Text style={styles.linhaCofres} testID="saldo-disponivel">
+          <Text
+            style={
+              resumo.disponivelCentavos < 0 ? styles.disponivelNegativo : null
+            }
+            testID="saldo-disponivel-valor">
+            {formatarCentavos(resumo.disponivelCentavos)} disponível
+          </Text>
+          {' · '}
+          {formatarCentavos(resumo.guardadoCofresCentavos)} em cofres
+        </Text>
+      )}
+
       <View style={styles.colunas}>
         <Coluna
           rotulo="Receitas"
@@ -185,6 +199,14 @@ const styles = StyleSheet.create({
   centavos: {
     fontSize: 18,
     color: CORES.textoSecundario,
+  },
+  linhaCofres: {
+    marginTop: -12,
+    fontSize: 12,
+    color: CORES.textoSecundario,
+  },
+  disponivelNegativo: {
+    color: CORES.vermelho,
   },
   colunas: {
     flexDirection: 'row',

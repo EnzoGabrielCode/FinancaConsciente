@@ -123,6 +123,38 @@ describe('CardSaldo', () => {
     expect(textoDe(porId(tree, 'poupado-mes-detalhe'))).toBe('-50% da renda');
   });
 
+  it('não mostra a linha de cofres quando não há nada guardado', () => {
+    const tree = renderizar(resumoCom());
+
+    expect(existe(tree, 'saldo-disponivel')).toBe(false);
+  });
+
+  it('mostra o disponível e o total em cofres quando há algo guardado', () => {
+    const tree = renderizar(
+      resumoCom({guardadoCofresCentavos: 500000, disponivelCentavos: 1962000}),
+    );
+    const linha = porId(tree, 'saldo-disponivel');
+
+    expect(textoDe(linha)).toBe(
+      'R$ 19.620,00 disponível · R$ 5.000,00 em cofres',
+    );
+    expect(porId(tree, 'saldo-disponivel-valor').props.style).toBeNull();
+  });
+
+  it('mostra o disponível negativo em vermelho', () => {
+    const tree = renderizar(
+      resumoCom({
+        saldoAtualCentavos: 30000,
+        guardadoCofresCentavos: 50000,
+        disponivelCentavos: -20000,
+      }),
+    );
+    const linha = porId(tree, 'saldo-disponivel');
+
+    expect(textoDe(linha)).toBe('-R$ 200,00 disponível · R$ 500,00 em cofres');
+    expect(corDe(porId(tree, 'saldo-disponivel-valor'))).toBe(CORES.vermelho);
+  });
+
   it('não mostra a taxa de poupança sem receitas no mês', () => {
     const tree = renderizar(resumoCom({}, []));
 
