@@ -171,4 +171,66 @@ describe('SqliteTransacaoRepository', () => {
       repositorio.totalReceitasDoMes("2026-09' OR 1=1"),
     ).rejects.toThrow(/Mês inválido/);
   });
+
+  const responderLinhas = (linhasRetornadas: object[]) =>
+    db.executeSql.mockImplementationOnce(async () => [
+      {
+        rows: {
+          length: linhasRetornadas.length,
+          item: (i: number) => linhasRetornadas[i],
+          raw: () => linhasRetornadas,
+        },
+      },
+    ]);
+
+  it('calcula o saldo até uma data com SQL parametrizado', async () => {
+    responderLinhas([{saldo: '2462000'}]);
+
+    await expect(repositorio.saldoAte('2026-10-02')).resolves.toBe(2462000);
+    expect(ultimaChamada()).toEqual({
+      sql: "SELECT COALESCE(SUM(CASE WHEN tipo = 'receita' THEN valor_centavos ELSE -valor_centavos END), 0) AS saldo FROM transacoes WHERE data <= ?",
+      parametros: ['2026-10-02'],
+    });
+  });
+
+  it('saldoAte devolve número negativo e 0 sem linhas', async () => {
+    responderLinhas([{saldo: -15000}]);
+    await expect(repositorio.saldoAte('2026-09-30')).resolves.toBe(-15000);
+    await expect(repositorio.saldoAte('2026-09-30')).resolves.toBe(0);
+  });
+
+  it('saldoAte recusa data inválida sem ir ao banco', async () => {
+    const chamadas = db.executeSql.mock.calls.length;
+    await expect(repositorio.saldoAte("2026-10-02' OR 1=1")).rejects.toThrow(
+      /Data inválida/,
+    );
+    expect(db.executeSql.mock.calls.length).toBe(chamadas);
+  });
+
+  it('agrupa os totais por mês com SQL parametrizado e converte para número', async () => {
+    responderLinhas([
+      {ano_mes: '2026-09', receitas: '850000', despesas: '324000'},
+      {ano_mes: '2026-10', receitas: 0, despesas: 8990},
+    ]);
+
+    await expect(
+      repositorio.totaisPorMes('2026-05', '2026-10'),
+    ).resolves.toEqual([
+      {anoMes: '2026-09', receitasCentavos: 850000, despesasCentavos: 324000},
+      {anoMes: '2026-10', receitasCentavos: 0, despesasCentavos: 8990},
+    ]);
+    expect(ultimaChamada()).toEqual({
+      sql: "SELECT substr(data, 1, 7) AS ano_mes, SUM(CASE WHEN tipo = 'receita' THEN valor_centavos ELSE 0 END) AS receitas, SUM(CASE WHEN tipo = 'despesa' THEN valor_centavos ELSE 0 END) AS despesas FROM transacoes WHERE substr(data, 1, 7) BETWEEN ? AND ? GROUP BY ano_mes ORDER BY ano_mes",
+      parametros: ['2026-05', '2026-10'],
+    });
+  });
+
+  it('totaisPorMes devolve lista vazia sem lançamentos e recusa mês inválido', async () => {
+    await expect(
+      repositorio.totaisPorMes('2026-05', '2026-10'),
+    ).resolves.toEqual([]);
+    await expect(
+      repositorio.totaisPorMes("2026-05' OR 1=1", '2026-10'),
+    ).rejects.toThrow(/Mês inválido/);
+  });
 });

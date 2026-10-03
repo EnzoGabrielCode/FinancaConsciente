@@ -34,6 +34,10 @@ class RepositorioFake implements TransacaoRepository {
   });
 
   totalReceitasDoMes = jest.fn(async () => 0);
+
+  saldoAte = jest.fn(async () => 0);
+
+  totaisPorMes = jest.fn(async () => []);
 }
 
 class ArmazenamentoFake implements ArmazenamentoComprovantes {

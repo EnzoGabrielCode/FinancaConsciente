@@ -1,3 +1,4 @@
+import type {TotaisMes} from '../entities/Dashboard';
 import type {DadosTransacao, Transacao} from '../entities/Transacao';
 
 export interface TransacaoRepository {
@@ -7,4 +8,6 @@ export interface TransacaoRepository {
   atualizar(id: number, dados: DadosTransacao): Promise<void>;
   excluir(id: number): Promise<void>;
   totalReceitasDoMes(anoMes: string): Promise<number>;
+  saldoAte(dataISO: string): Promise<number>;
+  totaisPorMes(deAnoMes: string, ateAnoMes: string): Promise<TotaisMes[]>;
 }

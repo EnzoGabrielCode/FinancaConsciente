@@ -8,6 +8,7 @@ import renderer, {
   type ReactTestRenderer,
 } from 'react-test-renderer';
 
+import type {TotaisMes} from '../src/domain/entities/Dashboard';
 import type {DadosTransacao, Transacao} from '../src/domain/entities/Transacao';
 import type {ArmazenamentoComprovantes} from '../src/domain/repositories/ArmazenamentoComprovantes';
 import type {TransacaoRepository} from '../src/domain/repositories/TransacaoRepository';
@@ -58,6 +59,40 @@ class RepositorioEmMemoria implements TransacaoRepository {
       .filter(t => t.tipo === 'receita' && t.data.startsWith(anoMes))
       .reduce((soma, t) => soma + t.valorCentavos, 0),
   );
+
+  saldoAte = jest.fn(async (dataISO: string) =>
+    this.transacoes
+      .filter(t => t.data <= dataISO)
+      .reduce(
+        (saldo, t) =>
+          saldo + (t.tipo === 'receita' ? t.valorCentavos : -t.valorCentavos),
+        0,
+      ),
+  );
+
+  totaisPorMes = jest.fn(async (deAnoMes: string, ateAnoMes: string) => {
+    const porMes = new Map<string, TotaisMes>();
+    for (const t of this.transacoes) {
+      const anoMes = t.data.slice(0, 7);
+      if (anoMes < deAnoMes || anoMes > ateAnoMes) {
+        continue;
+      }
+      const totais = porMes.get(anoMes) ?? {
+        anoMes,
+        receitasCentavos: 0,
+        despesasCentavos: 0,
+      };
+      if (t.tipo === 'receita') {
+        totais.receitasCentavos += t.valorCentavos;
+      } else {
+        totais.despesasCentavos += t.valorCentavos;
+      }
+      porMes.set(anoMes, totais);
+    }
+    return [...porMes.values()].sort((a, b) =>
+      a.anoMes.localeCompare(b.anoMes),
+    );
+  });
 }
 
 const PASTA = 'file:///docs/comprovantes/';

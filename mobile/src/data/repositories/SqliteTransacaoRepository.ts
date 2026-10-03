@@ -1,5 +1,7 @@
 import type {ResultSet, SQLiteDatabase} from 'react-native-sqlite-storage';
 
+import {dataISOValida} from '../../domain/datas';
+import type {TotaisMes} from '../../domain/entities/Dashboard';
 import type {DadosTransacao, Transacao} from '../../domain/entities/Transacao';
 import type {TransacaoRepository} from '../../domain/repositories/TransacaoRepository';
 
@@ -30,6 +32,20 @@ function paraTransacao(linha: LinhaTransacao): Transacao {
     comprovanteUri: linha.comprovante_uri ?? null,
     sincronizado: linha.sincronizado === 1,
   };
+}
+
+interface LinhaTotaisMes {
+  ano_mes: string;
+  receitas: number | string | null;
+  despesas: number | string | null;
+}
+
+const ANO_MES = /^\d{4}-\d{2}$/;
+
+function validarAnoMes(anoMes: string): void {
+  if (!ANO_MES.test(anoMes)) {
+    throw new Error(`Mês inválido: ${anoMes}. Use AAAA-MM.`);
+  }
 }
 
 function linhas<T>(resultado: ResultSet): T[] {
@@ -113,9 +129,7 @@ export class SqliteTransacaoRepository implements TransacaoRepository {
   }
 
   async totalReceitasDoMes(anoMes: string): Promise<number> {
-    if (!/^\d{4}-\d{2}$/.test(anoMes)) {
-      throw new Error(`Mês inválido: ${anoMes}. Use AAAA-MM.`);
-    }
+    validarAnoMes(anoMes);
     const resultado = await this.executar(
       `SELECT COALESCE(SUM(valor_centavos), 0) AS total
         FROM transacoes
@@ -123,5 +137,43 @@ export class SqliteTransacaoRepository implements TransacaoRepository {
       ['receita', `${anoMes}-01`, `${anoMes}-31`],
     );
     return resultado.rows.length > 0 ? Number(resultado.rows.item(0).total) : 0;
+  }
+
+  async saldoAte(dataISO: string): Promise<number> {
+    if (!dataISOValida(dataISO)) {
+      throw new Error(`Data inválida: ${dataISO}. Use AAAA-MM-DD.`);
+    }
+    const resultado = await this.executar(
+      `SELECT COALESCE(SUM(CASE WHEN tipo = 'receita' THEN valor_centavos
+          ELSE -valor_centavos END), 0) AS saldo
+        FROM transacoes
+        WHERE data <= ?`,
+      [dataISO],
+    );
+    const [linha] = linhas<{saldo: number | string | null}>(resultado);
+    return Number(linha?.saldo ?? 0);
+  }
+
+  async totaisPorMes(
+    deAnoMes: string,
+    ateAnoMes: string,
+  ): Promise<TotaisMes[]> {
+    validarAnoMes(deAnoMes);
+    validarAnoMes(ateAnoMes);
+    const resultado = await this.executar(
+      `SELECT substr(data, 1, 7) AS ano_mes,
+          SUM(CASE WHEN tipo = 'receita' THEN valor_centavos ELSE 0 END) AS receitas,
+          SUM(CASE WHEN tipo = 'despesa' THEN valor_centavos ELSE 0 END) AS despesas
+        FROM transacoes
+        WHERE substr(data, 1, 7) BETWEEN ? AND ?
+        GROUP BY ano_mes
+        ORDER BY ano_mes`,
+      [deAnoMes, ateAnoMes],
+    );
+    return linhas<LinhaTotaisMes>(resultado).map(linha => ({
+      anoMes: String(linha.ano_mes),
+      receitasCentavos: Number(linha.receitas ?? 0),
+      despesasCentavos: Number(linha.despesas ?? 0),
+    }));
   }
 }
