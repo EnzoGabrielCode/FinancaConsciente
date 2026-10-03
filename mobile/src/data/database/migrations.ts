@@ -38,6 +38,33 @@ export const MIGRATIONS: Migration[] = [
     description: 'Adiciona o caminho da foto do comprovante às transações',
     statements: ['ALTER TABLE transacoes ADD COLUMN comprovante_uri TEXT'],
   },
+  {
+    version: 4,
+    description: 'Cria os cofres virtuais e seus movimentos',
+    statements: [
+      `CREATE TABLE IF NOT EXISTS cofres (
+        id            INTEGER PRIMARY KEY AUTOINCREMENT,
+        nome          TEXT    NOT NULL CHECK (length(trim(nome)) BETWEEN 1 AND 30),
+        icone         TEXT    NOT NULL,
+        cor           TEXT    NOT NULL,
+        meta_centavos INTEGER CHECK (meta_centavos IS NULL OR
+                        (typeof(meta_centavos) = 'integer' AND meta_centavos > 0)),
+        sincronizado  INTEGER NOT NULL DEFAULT 0 CHECK (sincronizado IN (0, 1)),
+        criado_em     TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+      )`,
+      `CREATE TABLE IF NOT EXISTS movimentos_cofre (
+        id             INTEGER PRIMARY KEY AUTOINCREMENT,
+        cofre_id       INTEGER NOT NULL REFERENCES cofres(id) ON DELETE CASCADE,
+        tipo           TEXT    NOT NULL CHECK (tipo IN ('deposito', 'retirada')),
+        valor_centavos INTEGER NOT NULL
+                               CHECK (typeof(valor_centavos) = 'integer' AND valor_centavos > 0),
+        data           TEXT    NOT NULL,
+        sincronizado   INTEGER NOT NULL DEFAULT 0 CHECK (sincronizado IN (0, 1)),
+        criado_em      TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+      )`,
+      'CREATE INDEX IF NOT EXISTS idx_movimentos_cofre ON movimentos_cofre (cofre_id)',
+    ],
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

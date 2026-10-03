@@ -10,6 +10,7 @@ export const CORES = {
   verde: '#39FF84',
   vermelho: '#FF6B6B',
   azul: '#64B5F6',
+  laranja: '#FFB74D',
   vermelhoExcluir: '#C62828',
   realce: 'rgba(255,255,255,0.05)',
   realceForte: 'rgba(255,255,255,0.07)',

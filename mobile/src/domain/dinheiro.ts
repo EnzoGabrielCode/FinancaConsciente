@@ -90,3 +90,23 @@ export function centavosParaDigitado(centavos: number): string {
     ? String(reais)
     : `${reais},${String(resto).padStart(2, '0')}`;
 }
+
+export interface OpcoesPercentual {
+  casas?: number;
+  sinalPositivo?: boolean;
+}
+
+export function formatarPercentual(
+  fracao: number,
+  {casas = 1, sinalPositivo = true}: OpcoesPercentual = {},
+): string {
+  const fator = 10 ** casas;
+  const arredondado = Math.round(Math.abs(fracao) * 100 * fator);
+  const sinal =
+    arredondado === 0 ? '' : fracao < 0 ? '-' : sinalPositivo ? '+' : '';
+  const inteiros = Math.floor(arredondado / fator);
+  const decimais = String(arredondado % fator).padStart(casas, '0');
+  return casas > 0
+    ? `${sinal}${inteiros},${decimais}%`
+    : `${sinal}${inteiros}%`;
+}

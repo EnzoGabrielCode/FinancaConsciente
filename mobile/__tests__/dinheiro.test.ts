@@ -5,6 +5,7 @@ import {
   centavosParaDigitado,
   formatarCentavos,
   formatarDigitado,
+  formatarPercentual,
   paraCentavos,
 } from '../src/domain/dinheiro';
 
@@ -97,5 +98,34 @@ describe('exibição do valor digitado', () => {
     expect(centavosParaDigitado(8990)).toBe('89,90');
     expect(centavosParaDigitado(5)).toBe('0,05');
     expect(paraCentavos(centavosParaDigitado(8990))).toBe(8990);
+  });
+});
+
+describe('formatarPercentual', () => {
+  it('formata positivo com + e uma casa decimal', () => {
+    expect(formatarPercentual(0.067)).toBe('+6,7%');
+    expect(formatarPercentual(1.5)).toBe('+150,0%');
+  });
+
+  it('formata negativo com -', () => {
+    expect(formatarPercentual(-0.032)).toBe('-3,2%');
+  });
+
+  it('formata zero sem sinal', () => {
+    expect(formatarPercentual(0)).toBe('0,0%');
+    expect(formatarPercentual(-0.0001)).toBe('0,0%');
+  });
+
+  it('arredonda para a casa decimal mais próxima', () => {
+    expect(formatarPercentual(0.0666)).toBe('+6,7%');
+    expect(formatarPercentual(-0.0666)).toBe('-6,7%');
+    expect(formatarPercentual(0.0004)).toBe('0,0%');
+  });
+
+  it('aceita sem casa decimal e sem o + nos positivos', () => {
+    const semDecimal = {casas: 0, sinalPositivo: false};
+    expect(formatarPercentual(0.62, semDecimal)).toBe('62%');
+    expect(formatarPercentual(0.6249, semDecimal)).toBe('62%');
+    expect(formatarPercentual(-0.15, semDecimal)).toBe('-15%');
   });
 });

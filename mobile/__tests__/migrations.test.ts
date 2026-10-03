@@ -103,12 +103,43 @@ describe('runMigrations', () => {
     ).not.toMatch(/comprovante/);
 
     const db = createDb(2);
-    await expect(runMigrations(db)).resolves.toBe(3);
+    await expect(runMigrations(db, MIGRATIONS.slice(0, 3))).resolves.toBe(3);
     expect(db.userVersion).toBe(3);
     expect(db.executed).toEqual([
       'PRAGMA user_version',
       ...v3.statements,
       'PRAGMA user_version = 3',
+    ]);
+  });
+
+  it('a migração v4 cria cofres e movimentos sem alterar as anteriores e um banco na v3 roda só a v4', async () => {
+    const v4 = MIGRATIONS[3];
+    expect(v4.version).toBe(4);
+    expect(LATEST_VERSION).toBe(4);
+    const [cofres, movimentos, indice] = v4.statements;
+    expect(cofres).toMatch(/CREATE TABLE IF NOT EXISTS cofres/);
+    expect(cofres).toMatch(/length\(trim\(nome\)\) BETWEEN 1 AND 30/);
+    expect(cofres).toMatch(/meta_centavos IS NULL OR/);
+    expect(movimentos).toMatch(/CREATE TABLE IF NOT EXISTS movimentos_cofre/);
+    expect(movimentos).toMatch(/REFERENCES cofres\(id\) ON DELETE CASCADE/);
+    expect(movimentos).toMatch(/tipo IN \('deposito', 'retirada'\)/);
+    expect(movimentos).toMatch(/valor_centavos > 0/);
+    expect(indice).toBe(
+      'CREATE INDEX IF NOT EXISTS idx_movimentos_cofre ON movimentos_cofre (cofre_id)',
+    );
+    expect(
+      MIGRATIONS.slice(0, 3)
+        .flatMap(m => m.statements)
+        .join('\n'),
+    ).not.toMatch(/cofre/);
+
+    const db = createDb(3);
+    await expect(runMigrations(db)).resolves.toBe(4);
+    expect(db.userVersion).toBe(4);
+    expect(db.executed).toEqual([
+      'PRAGMA user_version',
+      ...v4.statements,
+      'PRAGMA user_version = 4',
     ]);
   });
 });

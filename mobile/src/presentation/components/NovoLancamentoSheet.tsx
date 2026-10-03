@@ -25,11 +25,9 @@ import {categoriasDo} from '../../domain/categorias';
 import {validarImagemComprovante} from '../../domain/comprovante';
 import {hojeISO} from '../../domain/datas';
 import {
-  aplicarTecla,
   centavosParaDigitado,
   formatarDigitado,
   paraCentavos,
-  type Tecla,
 } from '../../domain/dinheiro';
 import type {
   DadosTransacao,
@@ -49,6 +47,7 @@ import {
 import {CORES, FONTE_MONO, comAlfa, corDoTipo} from '../theme/cores';
 import {mensagemDeErro} from '../utils/mensagemDeErro';
 import ConfirmarExclusaoDialog from './ConfirmarExclusaoDialog';
+import TecladoNumerico from './TecladoNumerico';
 
 interface Props {
   visivel: boolean;
@@ -60,18 +59,6 @@ interface Props {
 }
 
 type OrigemMenu = 'camera' | 'trocar';
-
-const TECLAS: Tecla[][] = [
-  ['1', '2', '3'],
-  ['4', '5', '6'],
-  ['7', '8', '9'],
-  [',', '0', '⌫'],
-];
-
-const ROTULO_TECLA: Partial<Record<Tecla, string>> = {
-  ',': 'Vírgula',
-  '⌫': 'Apagar',
-};
 
 function NovoLancamentoSheet({
   visivel,
@@ -180,8 +167,8 @@ function NovoLancamentoSheet({
     </>
   );
 
-  const pressionarTecla = (tecla: Tecla) => {
-    setValor(atual => aplicarTecla(atual, tecla));
+  const digitarValor = (novoValor: string) => {
+    setValor(novoValor);
     setErros(({valorCentavos: _, ...resto}) => resto);
   };
 
@@ -494,39 +481,11 @@ function NovoLancamentoSheet({
                 </View>
               )}
 
-              <View style={styles.teclado}>
-                {TECLAS.map(linha => (
-                  <View key={linha.join('')} style={styles.linhaTeclado}>
-                    {linha.map(tecla => {
-                      const apagar = tecla === '⌫';
-                      return (
-                        <Pressable
-                          key={tecla}
-                          onPress={() => pressionarTecla(tecla)}
-                          disabled={ocupado}
-                          accessibilityRole="button"
-                          accessibilityLabel={ROTULO_TECLA[tecla] ?? tecla}
-                          testID={`tecla-${tecla}`}
-                          style={({pressed}) => [
-                            styles.tecla,
-                            apagar && styles.teclaApagar,
-                            pressed && styles.teclaPressionada,
-                          ]}>
-                          {apagar ? (
-                            <Icon
-                              source="backspace-outline"
-                              size={22}
-                              color={CORES.vermelho}
-                            />
-                          ) : (
-                            <Text style={styles.textoTecla}>{tecla}</Text>
-                          )}
-                        </Pressable>
-                      );
-                    })}
-                  </View>
-                ))}
-              </View>
+              <TecladoNumerico
+                valor={valor}
+                onChange={digitarValor}
+                desabilitado={ocupado}
+              />
 
               <Pressable
                 onPress={salvar}
@@ -785,32 +744,6 @@ const styles = StyleSheet.create({
   fecharVisualizador: {
     position: 'absolute',
     right: 16,
-  },
-  teclado: {
-    gap: 8,
-  },
-  linhaTeclado: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  tecla: {
-    flex: 1,
-    height: 52,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: CORES.realce,
-  },
-  teclaApagar: {
-    backgroundColor: comAlfa(CORES.vermelho, 0.1),
-  },
-  teclaPressionada: {
-    opacity: 0.6,
-  },
-  textoTecla: {
-    fontFamily: FONTE_MONO,
-    fontSize: 20,
-    color: CORES.texto,
   },
   botaoSalvar: {
     height: 52,

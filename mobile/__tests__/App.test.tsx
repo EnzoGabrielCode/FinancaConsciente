@@ -19,17 +19,25 @@ afterEach(async () => {
   jest.useRealTimers();
 });
 
-it('abre o banco local e mostra que ele está pronto', async () => {
+it('abre o banco local e mostra o painel zerado sem aviso de erro', async () => {
   await act(async () => {
     tree = renderer.create(<App />);
   });
 
-  const status = tree.root.findByProps({testID: 'database-status'});
-  const text = [status.props.children].flat().join('');
-  expect(text).toBe('Banco pronto (schema v3)');
+  expect(tree.root.findAll(no => no.props.testID === 'database-card')).toEqual(
+    [],
+  );
+  const texto = (id: string) =>
+    [tree.root.findByProps({testID: id}).props.children].flat().join('');
+  expect(
+    tree.root.findByProps({testID: 'disponivel'}).props.accessibilityLabel,
+  ).toBe('Disponível: R$ 0,00');
+  expect(texto('receitas-mes')).toBe('+R$ 0,00');
+  expect(tree.root.findAllByProps({testID: 'grafico-vazio'})).not.toEqual([]);
+  expect(tree.root.findAllByProps({testID: 'selo-variacao'})).toEqual([]);
 });
 
-it('mostra a lista vazia e o total de receitas zerado', async () => {
+it('mostra a lista vazia', async () => {
   await act(async () => {
     tree = renderer.create(<App />);
   });
@@ -39,5 +47,4 @@ it('mostra a lista vazia e o total de receitas zerado', async () => {
   expect(texto('lista-vazia')).toBe(
     'Nenhum lançamento ainda. Toque no + para começar.',
   );
-  expect(texto('total-receitas')).toBe('R$ 0,00');
 });
