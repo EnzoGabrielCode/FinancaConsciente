@@ -1,8 +1,13 @@
 import React, {useState} from 'react';
-import {Pressable, ScrollView, StyleSheet, View} from 'react-native';
+import {
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  View,
+} from 'react-native';
 import {
   ActivityIndicator,
-  Appbar,
   Avatar,
   Button,
   Card,
@@ -14,25 +19,22 @@ import {
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
 import {DATABASE_NAME} from '../../data/database/connection';
-import {formatarCentavos} from '../../domain/dinheiro';
+import {saudacao} from '../../domain/datas';
 import type {DadosTransacao, Transacao} from '../../domain/entities/Transacao';
 import type {ArmazenamentoComprovantes} from '../../domain/repositories/ArmazenamentoComprovantes';
 import type {TransacaoRepository} from '../../domain/repositories/TransacaoRepository';
+import CardSaldo from '../components/CardSaldo';
 import ConfirmarExclusaoDialog from '../components/ConfirmarExclusaoDialog';
 import NovoLancamentoSheet from '../components/NovoLancamentoSheet';
 import TransacaoItem from '../components/TransacaoItem';
 import {useDatabase} from '../hooks/useDatabase';
 import {useTransacoes} from '../hooks/useTransacoes';
 import type {SeletorImagem} from '../servicos/seletorImagem';
-import {CORES, FONTE_MONO} from '../theme/cores';
+import {CORES} from '../theme/cores';
 import {mensagemDeErro} from '../utils/mensagemDeErro';
 
 function DatabaseIcon(props: {size: number}): React.JSX.Element {
   return <Avatar.Icon {...props} icon="database" />;
-}
-
-function ReceitasIcon(props: {size: number}): React.JSX.Element {
-  return <Avatar.Icon {...props} icon="trending-up" />;
 }
 
 interface Props {
@@ -63,6 +65,16 @@ function HomeScreen({
   const [paraExcluir, setParaExcluir] = useState<Transacao | null>(null);
   const [excluindo, setExcluindo] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
+  const [atualizando, setAtualizando] = useState(false);
+
+  const puxarParaAtualizar = async () => {
+    setAtualizando(true);
+    try {
+      await lancamentos.recarregar();
+    } finally {
+      setAtualizando(false);
+    }
+  };
 
   const abrirNovo = () => setSheet({visivel: true, transacao: null});
   const abrirEdicao = (transacao: Transacao) =>
@@ -110,62 +122,61 @@ function HomeScreen({
 
   return (
     <View style={[styles.tela, {backgroundColor: theme.colors.background}]}>
-      <Appbar.Header elevated>
-        <Appbar.Content title="FinançaConsciente" />
-      </Appbar.Header>
+      <View
+        style={[styles.cabecalho, {paddingTop: insets.top + 16}]}
+        accessibilityRole="header">
+        <Text style={styles.saudacao} testID="saudacao">
+          {saudacao()}
+        </Text>
+        <Text style={styles.marca}>FinançaConsciente</Text>
+      </View>
 
       <View style={styles.corpo}>
-        <ScrollView contentContainerStyle={styles.content}>
-          <Text variant="headlineSmall">Bem-vindo(a)!</Text>
-          <Text
-            variant="bodyMedium"
-            style={{color: theme.colors.onSurfaceVariant}}>
-            Seus dados financeiros ficam salvos no aparelho e funcionam mesmo
-            sem internet.
-          </Text>
-
-          <Card mode="contained" testID="database-card">
-            <Card.Title
-              title="Banco de dados local"
-              subtitle={DATABASE_NAME}
-              left={DatabaseIcon}
+        <ScrollView
+          contentContainerStyle={styles.content}
+          refreshControl={
+            <RefreshControl
+              refreshing={atualizando}
+              onRefresh={puxarParaAtualizar}
+              colors={[CORES.verde]}
+              tintColor={CORES.verde}
+              progressBackgroundColor={CORES.superficie}
             />
-            <Card.Content>
-              {database.status === 'carregando' && (
-                <ActivityIndicator accessibilityLabel="Abrindo banco de dados" />
-              )}
-              {database.status === 'pronto' && (
-                <Text variant="bodyLarge" testID="database-status">
-                  Banco pronto (schema v{database.schemaVersion})
-                </Text>
-              )}
-              {database.status === 'erro' && (
+          }
+          testID="home-scroll">
+          {database.status === 'erro' && (
+            <Card mode="contained" testID="database-card">
+              <Card.Title
+                title="Banco de dados local"
+                subtitle={DATABASE_NAME}
+                left={DatabaseIcon}
+              />
+              <Card.Content>
                 <Text
                   variant="bodyLarge"
                   style={{color: theme.colors.error}}
                   testID="database-status">
                   Não foi possível abrir o banco: {database.message}
                 </Text>
-              )}
-            </Card.Content>
-            {database.status === 'erro' && (
+              </Card.Content>
               <Card.Actions>
                 <Button onPress={database.retry}>Tentar novamente</Button>
               </Card.Actions>
-            )}
-          </Card>
+            </Card>
+          )}
 
-          <Card mode="contained" testID="receitas-card">
-            <Card.Title title="Receitas do mês" left={ReceitasIcon} />
-            <Card.Content>
-              <Text
-                variant="headlineMedium"
-                style={[styles.total, {color: theme.colors.primary}]}
-                testID="total-receitas">
-                {formatarCentavos(lancamentos.totalReceitasMes)}
-              </Text>
-            </Card.Content>
-          </Card>
+          {lancamentos.resumo ? (
+            <CardSaldo resumo={lancamentos.resumo} />
+          ) : (
+            lancamentos.carregando && (
+              <ActivityIndicator
+                style={styles.carregandoResumo}
+                color={CORES.verde}
+                accessibilityLabel="Carregando resumo"
+                testID="carregando-resumo"
+              />
+            )
+          )}
 
           <Text variant="titleMedium">Últimas Transações</Text>
           {lancamentos.carregando && (
@@ -265,13 +276,26 @@ const styles = StyleSheet.create({
   corpo: {
     flex: 1,
   },
+  cabecalho: {
+    paddingHorizontal: 20,
+    paddingBottom: 8,
+  },
+  saudacao: {
+    fontSize: 13,
+    color: CORES.textoSecundario,
+  },
+  marca: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: CORES.texto,
+  },
   content: {
-    padding: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
     gap: 16,
   },
-  total: {
-    fontFamily: FONTE_MONO,
-    fontWeight: 'bold',
+  carregandoResumo: {
+    height: 200,
   },
   erroLista: {
     gap: 8,

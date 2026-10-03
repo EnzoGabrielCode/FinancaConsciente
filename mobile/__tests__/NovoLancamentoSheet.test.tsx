@@ -1,6 +1,7 @@
 import 'react-native';
 import React from 'react';
 import {afterEach, beforeEach, describe, expect, it, jest} from '@jest/globals';
+import {AppState} from 'react-native';
 import {PaperProvider} from 'react-native-paper';
 import renderer, {
   act,
@@ -8,6 +9,7 @@ import renderer, {
   type ReactTestRenderer,
 } from 'react-test-renderer';
 
+import {hojeISO} from '../src/domain/datas';
 import type {TotaisMes} from '../src/domain/entities/Dashboard';
 import type {DadosTransacao, Transacao} from '../src/domain/entities/Transacao';
 import type {ArmazenamentoComprovantes} from '../src/domain/repositories/ArmazenamentoComprovantes';
@@ -548,5 +550,113 @@ describe('NovoLancamentoSheet', () => {
         'Lançamento atualizado',
       );
     });
+  });
+});
+
+describe('HomeScreen: dashboard', () => {
+  let repositorio: RepositorioEmMemoria;
+  const appStateMock = AppState.addEventListener as unknown as jest.Mock<
+    typeof AppState.addEventListener
+  >;
+
+  beforeEach(() => {
+    jest.useFakeTimers();
+    appStateMock.mockClear();
+    armazenamento = new ArmazenamentoFake();
+    seletor = criarSeletorFake();
+  });
+
+  afterEach(async () => {
+    await act(async () => {
+      jest.runOnlyPendingTimers();
+      tree.unmount();
+    });
+    jest.useRealTimers();
+  });
+
+  it('mostra o cabeçalho com saudação no lugar do Appbar', async () => {
+    repositorio = new RepositorioEmMemoria();
+    await renderizar(repositorio);
+
+    expect(textoDe(porId('saudacao'))).toMatch(
+      /^(Bom dia|Boa tarde|Boa noite)$/,
+    );
+    expect(existe('receitas-card')).toBe(false);
+    expect(existe('database-card')).toBe(false);
+  });
+
+  it('atualiza o saldo na hora depois de salvar e de excluir', async () => {
+    repositorio = new RepositorioEmMemoria([
+      {...despesa, data: hojeISO(), valorCentavos: 20000},
+    ]);
+    await renderizar(repositorio);
+    expect(textoDe(porId('saldo-atual'))).toBe('R$ -200,00');
+
+    await tocar('botao-novo-lancamento');
+    await tocar('tipo-receita');
+    await digitar('1', '2', '0', '0');
+    await tocar('categoria-salario');
+    await tocar('botao-salvar');
+
+    expect(textoDe(porId('saldo-atual'))).toBe('R$ 1.000,00');
+    expect(textoDe(porId('receitas-mes'))).toBe('+R$ 1.200,00');
+    expect(textoDe(porId('despesas-mes'))).toBe('-R$ 200,00');
+    expect(textoDe(porId('poupado-mes-detalhe'))).toBe('83% da renda');
+
+    await tocar('excluir-1');
+    await tocar('confirmar-exclusao');
+
+    expect(textoDe(porId('saldo-atual'))).toBe('R$ 1.200,00');
+    expect(textoDe(porId('despesas-mes'))).toBe('-R$ 0,00');
+  });
+
+  it('mostra o indicador no lugar do card enquanto carrega', async () => {
+    repositorio = new RepositorioEmMemoria();
+    repositorio.saldoAte.mockImplementation(() => new Promise(() => {}));
+    await renderizar(repositorio);
+
+    expect(existe('carregando-resumo')).toBe(true);
+    expect(existe('card-saldo')).toBe(false);
+  });
+
+  it('recarrega quando o app volta para a frente e remove o listener', async () => {
+    repositorio = new RepositorioEmMemoria();
+    await renderizar(repositorio);
+    const [[evento, aoMudar]] = appStateMock.mock.calls;
+    const assinatura = appStateMock.mock.results[0].value as {
+      remove: jest.Mock;
+    };
+    expect(evento).toBe('change');
+    const chamadas = repositorio.totaisPorMes.mock.calls.length;
+
+    await act(async () => {
+      aoMudar('background');
+    });
+    expect(repositorio.totaisPorMes).toHaveBeenCalledTimes(chamadas);
+
+    await act(async () => {
+      aoMudar('active');
+    });
+    expect(repositorio.totaisPorMes).toHaveBeenCalledTimes(chamadas + 1);
+
+    await act(async () => {
+      tree.unmount();
+    });
+    expect(assinatura.remove).toHaveBeenCalled();
+    await renderizar(repositorio);
+  });
+
+  it('puxar a tela para baixo recarrega o painel', async () => {
+    repositorio = new RepositorioEmMemoria();
+    await renderizar(repositorio);
+    repositorio.transacoes.push({...despesa, data: hojeISO()});
+
+    const refresh = porId('home-scroll').props.refreshControl;
+    expect(refresh.props.colors).toEqual(['#39FF84']);
+    await act(async () => {
+      await refresh.props.onRefresh();
+    });
+
+    expect(textoDe(porId('saldo-atual'))).toBe('R$ -89,90');
   });
 });

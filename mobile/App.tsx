@@ -23,7 +23,7 @@ function App(): React.JSX.Element {
       <PaperProvider theme={theme}>
         <StatusBar
           barStyle={theme.dark ? 'light-content' : 'dark-content'}
-          backgroundColor={theme.colors.elevation.level2}
+          backgroundColor={theme.colors.background}
         />
         <HomeScreen repositorio={repositorio} armazenamento={armazenamento} />
       </PaperProvider>
