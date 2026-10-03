@@ -162,16 +162,6 @@ describe('SqliteTransacaoRepository', () => {
     expect(parametros).toEqual([20]);
   });
 
-  it('soma as receitas do mês', async () => {
-    await expect(repositorio.totalReceitasDoMes('2026-09')).resolves.toBe(0);
-    const {sql, parametros} = ultimaChamada();
-    expect(sql).toMatch(/SUM\(valor_centavos\)/);
-    expect(parametros).toEqual(['receita', '2026-09-01', '2026-09-31']);
-    await expect(
-      repositorio.totalReceitasDoMes("2026-09' OR 1=1"),
-    ).rejects.toThrow(/Mês inválido/);
-  });
-
   const responderLinhas = (linhasRetornadas: object[]) =>
     db.executeSql.mockImplementationOnce(async () => [
       {

@@ -33,8 +33,6 @@ class RepositorioFake implements TransacaoRepository {
     this.transacoes = this.transacoes.filter(t => t.id !== id);
   });
 
-  totalReceitasDoMes = jest.fn(async () => 0);
-
   saldoAte = jest.fn(async () => 0);
 
   totaisPorMes = jest.fn(async () => []);

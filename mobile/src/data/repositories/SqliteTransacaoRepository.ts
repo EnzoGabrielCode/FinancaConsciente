@@ -128,17 +128,6 @@ export class SqliteTransacaoRepository implements TransacaoRepository {
     await this.executar('DELETE FROM transacoes WHERE id = ?', [id]);
   }
 
-  async totalReceitasDoMes(anoMes: string): Promise<number> {
-    validarAnoMes(anoMes);
-    const resultado = await this.executar(
-      `SELECT COALESCE(SUM(valor_centavos), 0) AS total
-        FROM transacoes
-        WHERE tipo = ? AND data BETWEEN ? AND ?`,
-      ['receita', `${anoMes}-01`, `${anoMes}-31`],
-    );
-    return resultado.rows.length > 0 ? Number(resultado.rows.item(0).total) : 0;
-  }
-
   async saldoAte(dataISO: string): Promise<number> {
     if (!dataISOValida(dataISO)) {
       throw new Error(`Data inválida: ${dataISO}. Use AAAA-MM-DD.`);

@@ -56,12 +56,6 @@ class RepositorioEmMemoria implements TransacaoRepository {
     this.transacoes = this.transacoes.filter(t => t.id !== id);
   });
 
-  totalReceitasDoMes = jest.fn(async (anoMes: string) =>
-    this.transacoes
-      .filter(t => t.tipo === 'receita' && t.data.startsWith(anoMes))
-      .reduce((soma, t) => soma + t.valorCentavos, 0),
-  );
-
   saldoAte = jest.fn(async (dataISO: string) =>
     this.transacoes
       .filter(t => t.data <= dataISO)

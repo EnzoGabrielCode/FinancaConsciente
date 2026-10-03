@@ -7,7 +7,6 @@ export interface TransacaoRepository {
   criar(dados: DadosTransacao): Promise<number>;
   atualizar(id: number, dados: DadosTransacao): Promise<void>;
   excluir(id: number): Promise<void>;
-  totalReceitasDoMes(anoMes: string): Promise<number>;
   saldoAte(dataISO: string): Promise<number>;
   totaisPorMes(deAnoMes: string, ateAnoMes: string): Promise<TotaisMes[]>;
 }
