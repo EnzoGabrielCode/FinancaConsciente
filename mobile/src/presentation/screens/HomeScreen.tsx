@@ -308,37 +308,43 @@ function HomeScreen({
             )}
           </View>
 
-          <Text style={styles.textoTituloSecao}>Últimas Transações</Text>
-          {lancamentos.carregando && (
-            <ActivityIndicator accessibilityLabel="Carregando lançamentos" />
-          )}
-          {!lancamentos.carregando && lancamentos.erro && (
-            <View style={styles.erroLista}>
-              <Text style={{color: theme.colors.error}} testID="lista-erro">
-                Não foi possível carregar os lançamentos: {lancamentos.erro}
-              </Text>
-              <Button onPress={lancamentos.recarregar}>Tentar novamente</Button>
-            </View>
-          )}
-          {!lancamentos.carregando &&
-            !lancamentos.erro &&
-            lancamentos.transacoes.length === 0 && (
-              <Text
-                variant="bodyMedium"
-                style={{color: theme.colors.onSurfaceVariant}}
-                testID="lista-vazia">
-                Nenhum lançamento ainda. Toque no + para começar.
-              </Text>
+          <View style={styles.secaoTransacoes} testID="secao-transacoes">
+            <Text style={styles.textoTituloSecao}>Últimas Transações</Text>
+            {lancamentos.carregando && (
+              <ActivityIndicator accessibilityLabel="Carregando lançamentos" />
             )}
-          <View style={styles.lista}>
-            {lancamentos.transacoes.map(transacao => (
-              <TransacaoItem
-                key={transacao.id}
-                transacao={transacao}
-                onPress={abrirEdicao}
-                onExcluir={setParaExcluir}
-              />
-            ))}
+            {!lancamentos.carregando && lancamentos.erro && (
+              <View style={styles.erroLista}>
+                <Text style={{color: theme.colors.error}} testID="lista-erro">
+                  Não foi possível carregar os lançamentos: {lancamentos.erro}
+                </Text>
+                <Button onPress={lancamentos.recarregar}>
+                  Tentar novamente
+                </Button>
+              </View>
+            )}
+            {!lancamentos.carregando &&
+              !lancamentos.erro &&
+              lancamentos.transacoes.length === 0 && (
+                <Text
+                  variant="bodyMedium"
+                  style={{color: theme.colors.onSurfaceVariant}}
+                  testID="lista-vazia">
+                  Nenhum lançamento ainda. Toque no + para começar.
+                </Text>
+              )}
+            {lancamentos.transacoes.length > 0 && (
+              <View style={styles.lista}>
+                {lancamentos.transacoes.map(transacao => (
+                  <TransacaoItem
+                    key={transacao.id}
+                    transacao={transacao}
+                    onPress={abrirEdicao}
+                    onExcluir={setParaExcluir}
+                  />
+                ))}
+              </View>
+            )}
           </View>
         </ScrollView>
 
@@ -412,7 +418,6 @@ const styles = StyleSheet.create({
   },
   cabecalho: {
     paddingHorizontal: 20,
-    paddingBottom: 8,
   },
   saudacao: {
     fontFamily: FONTES.regular,
@@ -427,7 +432,8 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingTop: 16,
+    paddingBottom: 16,
     gap: 24,
   },
   carregandoResumo: {
@@ -435,6 +441,9 @@ const styles = StyleSheet.create({
   },
   secaoCofres: {
     gap: 12,
+  },
+  secaoTransacoes: {
+    gap: 14,
   },
   tituloSecao: {
     flexDirection: 'row',
