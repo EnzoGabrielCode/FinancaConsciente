@@ -81,6 +81,14 @@ function TransacaoItem({
     };
   }, [deslocamento]);
 
+  // Só mostra o vermelho durante o deslize; parado, ele vazaria pela borda
+  // translúcida do card.
+  const opacidadeExcluir = deslocamento.interpolate({
+    inputRange: [-12, 0],
+    outputRange: [1, 0],
+    extrapolate: 'clamp',
+  });
+
   const tocar = () => {
     if (aberto.current) {
       panResponder.animarPara(0);
@@ -104,7 +112,7 @@ function TransacaoItem({
 
   return (
     <View style={styles.container} testID={`transacao-${transacao.id}`}>
-      <View style={styles.fundoExcluir}>
+      <Animated.View style={[styles.fundoExcluir, {opacity: opacidadeExcluir}]}>
         <Pressable
           onPress={excluir}
           accessibilityRole="button"
@@ -114,7 +122,7 @@ function TransacaoItem({
           <Icon source="trash-can-outline" size={22} color="#FFFFFF" />
           <Text style={styles.textoExcluir}>Excluir</Text>
         </Pressable>
-      </View>
+      </Animated.View>
 
       <Animated.View
         style={{transform: [{translateX: deslocamento}]}}
