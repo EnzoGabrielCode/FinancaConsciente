@@ -335,6 +335,10 @@ function NovoLancamentoSheet({
               <View>
                 <Text style={styles.rotulo}>VALOR</Text>
                 <View style={styles.linhaValorAcoes}>
+                  {tipo === 'despesa' && (
+                    // Contrapeso da câmera: mantém o número no centro da largura.
+                    <View style={styles.espacoCamera} />
+                  )}
                   <View style={styles.linhaValor}>
                     <Text style={styles.moeda}>R$</Text>
                     <Text
@@ -649,6 +653,9 @@ function NovoLancamentoSheet({
   );
 }
 
+const TAMANHO_CAMERA = 40;
+const ESPACO_CAMERA = 16;
+
 const styles = StyleSheet.create({
   fundo: {
     flex: 1,
@@ -725,21 +732,26 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: CORES.textoApagado,
     letterSpacing: 1,
+    textAlign: 'center',
   },
   linhaValorAcoes: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    justifyContent: 'center',
+    gap: ESPACO_CAMERA,
+  },
+  espacoCamera: {
+    width: TAMANHO_CAMERA,
   },
   linhaValor: {
-    flex: 1,
+    flexShrink: 1,
     flexDirection: 'row',
     alignItems: 'baseline',
     gap: 8,
   },
   botaoCamera: {
-    width: 40,
-    height: 40,
+    width: TAMANHO_CAMERA,
+    height: TAMANHO_CAMERA,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
