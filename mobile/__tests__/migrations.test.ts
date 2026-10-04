@@ -115,7 +115,6 @@ describe('runMigrations', () => {
   it('a migração v4 cria cofres e movimentos sem alterar as anteriores e um banco na v3 roda só a v4', async () => {
     const v4 = MIGRATIONS[3];
     expect(v4.version).toBe(4);
-    expect(LATEST_VERSION).toBe(4);
     const [cofres, movimentos, indice] = v4.statements;
     expect(cofres).toMatch(/CREATE TABLE IF NOT EXISTS cofres/);
     expect(cofres).toMatch(/length\(trim\(nome\)\) BETWEEN 1 AND 30/);
@@ -134,12 +133,35 @@ describe('runMigrations', () => {
     ).not.toMatch(/cofre/);
 
     const db = createDb(3);
-    await expect(runMigrations(db)).resolves.toBe(4);
+    await expect(runMigrations(db, MIGRATIONS.slice(0, 4))).resolves.toBe(4);
     expect(db.userVersion).toBe(4);
     expect(db.executed).toEqual([
       'PRAGMA user_version',
       ...v4.statements,
       'PRAGMA user_version = 4',
+    ]);
+  });
+
+  it('a migração v5 só cria o índice de duplicatas e um banco na v4 roda só a v5', async () => {
+    const v5 = MIGRATIONS[4];
+    expect(v5.version).toBe(5);
+    expect(LATEST_VERSION).toBe(5);
+    expect(v5.statements).toEqual([
+      'CREATE INDEX IF NOT EXISTS idx_transacoes_duplicatas ON transacoes (tipo, valor_centavos, data)',
+    ]);
+    expect(
+      MIGRATIONS.slice(0, 4)
+        .flatMap(m => m.statements)
+        .join('\n'),
+    ).not.toMatch(/idx_transacoes_duplicatas/);
+
+    const db = createDb(4);
+    await expect(runMigrations(db)).resolves.toBe(5);
+    expect(db.userVersion).toBe(5);
+    expect(db.executed).toEqual([
+      'PRAGMA user_version',
+      ...v5.statements,
+      'PRAGMA user_version = 5',
     ]);
   });
 });

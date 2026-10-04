@@ -223,4 +223,50 @@ describe('SqliteTransacaoRepository', () => {
       repositorio.totaisPorMes("2026-05' OR 1=1", '2026-10'),
     ).rejects.toThrow(/Mês inválido/);
   });
+
+  it('busca as candidatas a duplicata com SQL parametrizado e criado_em à parte', async () => {
+    responderLinhas([
+      {
+        id: 4,
+        tipo: 'despesa',
+        descricao: 'Mercado',
+        valor_centavos: 8990,
+        data: '2026-10-03',
+        categoria: 'alimentacao',
+        recorrencia: 'variavel',
+        comprovante_uri: null,
+        sincronizado: 0,
+        criado_em: '2026-10-03T17:32:10.123Z',
+      },
+    ]);
+
+    await expect(
+      repositorio.buscarCandidatasDuplicata('despesa', 8990, '2026-10-03'),
+    ).resolves.toEqual([
+      {
+        transacao: {
+          id: 4,
+          tipo: 'despesa',
+          descricao: 'Mercado',
+          valorCentavos: 8990,
+          data: '2026-10-03',
+          categoria: 'alimentacao',
+          recorrencia: 'variavel',
+          comprovanteUri: null,
+          sincronizado: false,
+        },
+        criadoEm: '2026-10-03T17:32:10.123Z',
+      },
+    ]);
+    expect(ultimaChamada()).toEqual({
+      sql: 'SELECT id, tipo, descricao, valor_centavos, data, categoria, recorrencia, comprovante_uri, sincronizado, criado_em FROM transacoes WHERE tipo = ? AND valor_centavos = ? AND data = ? ORDER BY criado_em DESC LIMIT 10',
+      parametros: ['despesa', 8990, '2026-10-03'],
+    });
+  });
+
+  it('buscarCandidatasDuplicata devolve lista vazia sem linhas', async () => {
+    await expect(
+      repositorio.buscarCandidatasDuplicata('despesa', 1, '2026-10-03'),
+    ).resolves.toEqual([]);
+  });
 });

@@ -2,7 +2,12 @@ import type {ResultSet, SQLiteDatabase} from 'react-native-sqlite-storage';
 
 import {dataISOValida} from '../../domain/datas';
 import type {TotaisMes} from '../../domain/entities/Dashboard';
-import type {DadosTransacao, Transacao} from '../../domain/entities/Transacao';
+import type {CandidataDuplicata} from '../../domain/entities/Duplicata';
+import type {
+  DadosTransacao,
+  TipoTransacao,
+  Transacao,
+} from '../../domain/entities/Transacao';
 import type {TransacaoRepository} from '../../domain/repositories/TransacaoRepository';
 
 interface LinhaTransacao {
@@ -164,5 +169,21 @@ export class SqliteTransacaoRepository implements TransacaoRepository {
       receitasCentavos: Number(linha.receitas ?? 0),
       despesasCentavos: Number(linha.despesas ?? 0),
     }));
+  }
+
+  async buscarCandidatasDuplicata(
+    tipo: TipoTransacao,
+    valorCentavos: number,
+    data: string,
+  ): Promise<CandidataDuplicata[]> {
+    const resultado = await this.executar(
+      `SELECT ${COLUNAS}, criado_em FROM transacoes
+        WHERE tipo = ? AND valor_centavos = ? AND data = ?
+        ORDER BY criado_em DESC LIMIT 10`,
+      [tipo, valorCentavos, data],
+    );
+    return linhas<LinhaTransacao & {criado_em: string}>(resultado).map(
+      linha => ({transacao: paraTransacao(linha), criadoEm: linha.criado_em}),
+    );
   }
 }

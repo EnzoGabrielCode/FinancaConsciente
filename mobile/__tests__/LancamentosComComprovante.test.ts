@@ -1,6 +1,7 @@
 import {beforeEach, describe, expect, it, jest} from '@jest/globals';
 
 import {LancamentosComComprovante} from '../src/domain/casosDeUso/LancamentosComComprovante';
+import type {CandidataDuplicata} from '../src/domain/entities/Duplicata';
 import type {DadosTransacao, Transacao} from '../src/domain/entities/Transacao';
 import type {ArmazenamentoComprovantes} from '../src/domain/repositories/ArmazenamentoComprovantes';
 import type {TransacaoRepository} from '../src/domain/repositories/TransacaoRepository';
@@ -36,6 +37,10 @@ class RepositorioFake implements TransacaoRepository {
   saldoAte = jest.fn(async () => 0);
 
   totaisPorMes = jest.fn(async () => []);
+
+  candidatas: CandidataDuplicata[] = [];
+
+  buscarCandidatasDuplicata = jest.fn(async () => this.candidatas);
 }
 
 class ArmazenamentoFake implements ArmazenamentoComprovantes {
@@ -211,5 +216,50 @@ describe('LancamentosComComprovante', () => {
 
     expect(repositorio.excluir).toHaveBeenCalledWith(id);
     expect(repositorio.transacoes).toEqual([]);
+  });
+
+  describe('verificarDuplicatas', () => {
+    const criadoEmRecente = new Date().toISOString();
+
+    it('busca as candidatas por (tipo, valor, data) e filtra', async () => {
+      const mesmaCategoria = {
+        transacao: {...despesa, id: 1, sincronizado: false},
+        criadoEm: '2026-09-28T10:00:00.000Z',
+      };
+      const outraCategoriaAntiga = {
+        transacao: {
+          ...despesa,
+          id: 2,
+          categoria: 'transporte',
+          sincronizado: false,
+        },
+        criadoEm: '2026-09-28T09:00:00.000Z',
+      };
+      const outroValor = {
+        transacao: {...despesa, id: 3, valorCentavos: 1, sincronizado: false},
+        criadoEm: criadoEmRecente,
+      };
+      repositorio.candidatas = [
+        outraCategoriaAntiga,
+        outroValor,
+        mesmaCategoria,
+      ];
+
+      await expect(casoDeUso.verificarDuplicatas(despesa)).resolves.toEqual([
+        {...mesmaCategoria, motivo: 'mesma-categoria'},
+      ]);
+      expect(repositorio.buscarCandidatasDuplicata).toHaveBeenCalledWith(
+        'despesa',
+        8990,
+        '2026-09-28',
+      );
+    });
+
+    it('receita devolve [] sem ir ao repositório', async () => {
+      await expect(
+        casoDeUso.verificarDuplicatas({...despesa, tipo: 'receita'}),
+      ).resolves.toEqual([]);
+      expect(repositorio.buscarCandidatasDuplicata).not.toHaveBeenCalled();
+    });
   });
 });

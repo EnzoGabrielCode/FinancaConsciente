@@ -1,7 +1,7 @@
 import React from 'react';
 import {StyleSheet, Text, View} from 'react-native';
 
-import {formatarCentavos, formatarPercentual} from '../../domain/dinheiro';
+import {formatarCentavos} from '../../domain/dinheiro';
 import type {ResumoDashboard} from '../../domain/entities/Dashboard';
 import {CORES, FONTE_MONO, comAlfa} from '../theme/cores';
 import GraficoMensal from './GraficoMensal';
@@ -26,25 +26,6 @@ function textoCofres(quantidade: number): string {
     return 'Nenhum cofre';
   }
   return `${quantidade} ${quantidade === 1 ? 'cofre' : 'cofres'}`;
-}
-
-function SeloVariacao({variacao}: {variacao: number}): React.JSX.Element {
-  const texto = formatarPercentual(variacao);
-  const cor = texto.startsWith('-')
-    ? CORES.vermelho
-    : texto.startsWith('+')
-    ? CORES.verde
-    : CORES.textoSecundario;
-  const seta = texto.startsWith('-') ? ' ↓' : texto.startsWith('+') ? ' ↑' : '';
-  return (
-    <Text
-      style={[styles.selo, {color: cor, backgroundColor: comAlfa(cor, 0.12)}]}
-      accessibilityLabel={`Variação do saldo desde o fim do mês passado: ${texto}`}
-      testID="selo-variacao">
-      {texto}
-      {seta}
-    </Text>
-  );
 }
 
 interface ColunaProps {
@@ -89,44 +70,28 @@ function Coluna({
 }
 
 function CardSaldo({resumo, quantidadeCofres}: Props): React.JSX.Element {
-  const disponivel = partesDoSaldo(resumo.disponivelCentavos);
-  const corDisponivel =
-    resumo.disponivelCentavos < 0 ? CORES.vermelho : CORES.verde;
-  const saldoTotal = formatarCentavos(resumo.saldoAtualCentavos);
+  const saldo = partesDoSaldo(resumo.disponivelCentavos);
+  const corSaldo = resumo.disponivelCentavos < 0 ? CORES.vermelho : CORES.verde;
 
   return (
     <View style={styles.card} testID="card-saldo">
-      <Text style={styles.titulo}>DISPONÍVEL</Text>
+      <Text style={styles.titulo}>SALDO ATUAL</Text>
 
-      <View style={styles.blocoDisponivel}>
-        <Text
-          style={styles.disponivel}
-          numberOfLines={1}
-          adjustsFontSizeToFit
-          accessibilityLabel={`Disponível: ${formatarCentavos(
-            resumo.disponivelCentavos,
-          )}`}
-          testID="disponivel">
-          <Text style={styles.moeda}>R$ </Text>
-          <Text style={{color: corDisponivel}} testID="disponivel-inteiros">
-            {disponivel.sinal}
-            {disponivel.inteiros}
-          </Text>
-          <Text style={styles.centavos}>{disponivel.decimais}</Text>
+      <Text
+        style={styles.saldo}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        accessibilityLabel={`Saldo atual: ${formatarCentavos(
+          resumo.disponivelCentavos,
+        )}`}
+        testID="saldo-atual">
+        <Text style={styles.moeda}>R$ </Text>
+        <Text style={{color: corSaldo}} testID="saldo-inteiros">
+          {saldo.sinal}
+          {saldo.inteiros}
         </Text>
-
-        <View style={styles.linhaSaldoTotal}>
-          <Text
-            style={styles.saldoTotal}
-            accessibilityLabel={`Saldo total: ${saldoTotal}`}
-            testID="saldo-total">
-            Saldo total {saldoTotal}
-          </Text>
-          {resumo.variacaoSaldo !== null && (
-            <SeloVariacao variacao={resumo.variacaoSaldo} />
-          )}
-        </View>
-      </View>
+        <Text style={styles.centavos}>{saldo.decimais}</Text>
+      </Text>
 
       <View style={styles.colunas}>
         <Coluna
@@ -173,19 +138,8 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     color: CORES.textoSecundario,
   },
-  selo: {
-    fontSize: 11,
-    fontWeight: 'bold',
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    overflow: 'hidden',
-  },
-  blocoDisponivel: {
+  saldo: {
     marginTop: -8,
-    gap: 4,
-  },
-  disponivel: {
     fontFamily: FONTE_MONO,
     fontSize: 34,
     fontWeight: 'bold',
@@ -195,15 +149,6 @@ const styles = StyleSheet.create({
   },
   centavos: {
     fontSize: 18,
-    color: CORES.textoSecundario,
-  },
-  linhaSaldoTotal: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  saldoTotal: {
-    fontSize: 12,
     color: CORES.textoSecundario,
   },
   colunas: {

@@ -1,5 +1,10 @@
 import type {TotaisMes} from '../entities/Dashboard';
-import type {DadosTransacao, Transacao} from '../entities/Transacao';
+import type {CandidataDuplicata} from '../entities/Duplicata';
+import type {
+  DadosTransacao,
+  TipoTransacao,
+  Transacao,
+} from '../entities/Transacao';
 
 export interface TransacaoRepository {
   listarRecentes(limite: number): Promise<Transacao[]>;
@@ -9,4 +14,9 @@ export interface TransacaoRepository {
   excluir(id: number): Promise<void>;
   saldoAte(dataISO: string): Promise<number>;
   totaisPorMes(deAnoMes: string, ateAnoMes: string): Promise<TotaisMes[]>;
+  buscarCandidatasDuplicata(
+    tipo: TipoTransacao,
+    valorCentavos: number,
+    data: string,
+  ): Promise<CandidataDuplicata[]>;
 }

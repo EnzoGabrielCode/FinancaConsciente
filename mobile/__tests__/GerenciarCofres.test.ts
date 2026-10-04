@@ -74,6 +74,7 @@ function transacoesFake(saldoCentavos: number): TransacaoRepository {
     excluir: jest.fn(async () => {}),
     saldoAte: jest.fn(async () => saldoCentavos),
     totaisPorMes: jest.fn(async () => []),
+    buscarCandidatasDuplicata: jest.fn(async () => []),
   };
 }
 

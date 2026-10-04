@@ -17,10 +17,13 @@ import type {
   MovimentoCofre,
 } from '../src/domain/entities/Cofre';
 import type {TotaisMes} from '../src/domain/entities/Dashboard';
+import type {PossivelDuplicata} from '../src/domain/entities/Duplicata';
 import type {DadosTransacao, Transacao} from '../src/domain/entities/Transacao';
 import type {ArmazenamentoComprovantes} from '../src/domain/repositories/ArmazenamentoComprovantes';
 import type {CofreRepository} from '../src/domain/repositories/CofreRepository';
 import type {TransacaoRepository} from '../src/domain/repositories/TransacaoRepository';
+import AlertaDuplicataDialog from '../src/presentation/components/AlertaDuplicataDialog';
+import NovoLancamentoSheet from '../src/presentation/components/NovoLancamentoSheet';
 import HomeScreen from '../src/presentation/screens/HomeScreen';
 import type {
   ImagemSelecionada,
@@ -30,6 +33,7 @@ import {darkTheme} from '../src/presentation/theme';
 
 class RepositorioEmMemoria implements TransacaoRepository {
   transacoes: Transacao[] = [];
+  criadoEm = new Map<number, string>();
   private proximoId = 1;
 
   constructor(iniciais: Transacao[] = []) {
@@ -50,6 +54,7 @@ class RepositorioEmMemoria implements TransacaoRepository {
   criar = jest.fn(async (dados: DadosTransacao) => {
     const id = this.proximoId++;
     this.transacoes.push({...dados, id, sincronizado: false});
+    this.criadoEm.set(id, new Date().toISOString());
     return id;
   });
 
@@ -96,6 +101,22 @@ class RepositorioEmMemoria implements TransacaoRepository {
       a.anoMes.localeCompare(b.anoMes),
     );
   });
+
+  buscarCandidatasDuplicata = jest.fn(
+    async (tipo: string, valorCentavos: number, data: string) =>
+      this.transacoes
+        .filter(
+          t =>
+            t.tipo === tipo &&
+            t.valorCentavos === valorCentavos &&
+            t.data === data,
+        )
+        .map(transacao => ({
+          transacao,
+          criadoEm:
+            this.criadoEm.get(transacao.id) ?? '2000-01-01T00:00:00.000Z',
+        })),
+  );
 }
 
 class CofresEmMemoria implements CofreRepository {
@@ -618,6 +639,247 @@ describe('NovoLancamentoSheet', () => {
   });
 });
 
+describe('NovoLancamentoSheet: prevenção de duplicatas (US 1.5)', () => {
+  const duplicataDe = (
+    id: number,
+    motivo: PossivelDuplicata['motivo'] = 'mesma-categoria',
+    parcial: Partial<Transacao> = {},
+  ): PossivelDuplicata => ({
+    transacao: {
+      ...despesa,
+      id,
+      data: hojeISO(),
+      descricao: `Mercado ${id}`,
+      ...parcial,
+    },
+    criadoEm: new Date(2026, 9, 3, 14, 32).toISOString(),
+    motivo,
+  });
+
+  let onSalvar: jest.Mock<(dados: DadosTransacao) => Promise<void>>;
+  let onVerificarDuplicatas: jest.Mock<
+    (dados: DadosTransacao) => Promise<PossivelDuplicata[]>
+  >;
+
+  beforeEach(() => {
+    jest.useFakeTimers();
+    seletor = criarSeletorFake();
+    onSalvar = jest.fn(async () => {});
+    onVerificarDuplicatas = jest.fn(async () => []);
+  });
+
+  afterEach(async () => {
+    await act(async () => {
+      jest.runOnlyPendingTimers();
+      tree.unmount();
+    });
+    jest.useRealTimers();
+  });
+
+  async function abrirSheet(transacao: Transacao | null = null) {
+    await act(async () => {
+      tree = renderer.create(
+        <PaperProvider theme={darkTheme}>
+          <NovoLancamentoSheet
+            visivel
+            transacao={transacao}
+            onFechar={() => {}}
+            onSalvar={onSalvar}
+            onVerificarDuplicatas={onVerificarDuplicatas}
+            seletorImagem={seletor}
+          />
+        </PaperProvider>,
+      );
+    });
+  }
+
+  async function preencherDespesa() {
+    await digitar('8', '9', ',', '9', '0');
+    await tocar('categoria-alimentacao');
+  }
+
+  const alertaAberto = () =>
+    tree.root.findAll(
+      no => no.props.testID === 'alerta-duplicata' && no.props.visible === true,
+    ).length > 0;
+
+  it('sem duplicata salva direto', async () => {
+    await abrirSheet();
+    await preencherDespesa();
+    await tocar('botao-salvar');
+
+    expect(onVerificarDuplicatas).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tipo: 'despesa',
+        valorCentavos: 8990,
+        categoria: 'alimentacao',
+        data: hojeISO(),
+      }),
+    );
+    expect(onSalvar).toHaveBeenCalledTimes(1);
+    expect(existe('alerta-duplicata-titulo')).toBe(false);
+  });
+
+  it('com duplicata abre o alerta e não chama onSalvar', async () => {
+    onVerificarDuplicatas.mockResolvedValueOnce([duplicataDe(7)]);
+    await abrirSheet();
+    await preencherDespesa();
+    await tocar('botao-salvar');
+
+    expect(alertaAberto()).toBe(true);
+    expect(onSalvar).not.toHaveBeenCalled();
+    expect(textoDe(porId('alerta-duplicata-titulo'))).toBe('Despesa repetida?');
+    expect(textoDe(porId('alerta-duplicata-texto'))).toBe(
+      'Você já lançou R$ 89,90 hoje:',
+    );
+    expect(textoDe(porId('duplicata-item-7'))).toMatch(
+      /Alimentação.*Mercado 7.*às 14:32$/,
+    );
+    expect(textoDe(porId('alerta-duplicata-motivo'))).toBe(
+      'Mesmo valor, mesma categoria e mesmo dia.',
+    );
+    expect(existe('alerta-duplicata-mais')).toBe(false);
+  });
+
+  it('mostra até 3 itens, "e mais N" e o motivo do primeiro', async () => {
+    onVerificarDuplicatas.mockResolvedValueOnce([
+      duplicataDe(1, 'lancada-agora', {
+        data: '2026-09-28',
+        categoria: 'transporte',
+      }),
+      duplicataDe(2, 'mesma-categoria', {data: '2026-09-28'}),
+      duplicataDe(3, 'mesma-categoria', {data: '2026-09-28'}),
+      duplicataDe(4, 'mesma-categoria', {data: '2026-09-28'}),
+      duplicataDe(5, 'mesma-categoria', {data: '2026-09-28'}),
+    ]);
+    await abrirSheet();
+    await preencherDespesa();
+    await tocar('botao-salvar');
+
+    expect(existe('duplicata-item-1')).toBe(true);
+    expect(existe('duplicata-item-3')).toBe(true);
+    expect(existe('duplicata-item-4')).toBe(false);
+    expect(textoDe(porId('alerta-duplicata-mais'))).toBe('e mais 2');
+    expect(textoDe(porId('duplicata-item-1'))).toContain('Transporte');
+    expect(textoDe(porId('alerta-duplicata-motivo'))).toBe(
+      'Lançada há poucos minutos com o mesmo valor.',
+    );
+  });
+
+  it('o alerta mostra "em DD/MM/AAAA" quando a data não é hoje', async () => {
+    await act(async () => {
+      tree = renderer.create(
+        <PaperProvider theme={darkTheme}>
+          <AlertaDuplicataDialog
+            visivel
+            duplicatas={[
+              duplicataDe(7, 'mesma-categoria', {data: '2026-09-28'}),
+            ]}
+            valorCentavos={8990}
+            data="2026-09-28"
+            onRevisar={() => {}}
+            onSalvarMesmoAssim={() => {}}
+          />
+        </PaperProvider>,
+      );
+    });
+
+    expect(textoDe(porId('alerta-duplicata-texto'))).toBe(
+      'Você já lançou R$ 89,90 em 28/09/2026:',
+    );
+  });
+
+  it('"Voltar e revisar" fecha o alerta e mantém o formulário preenchido', async () => {
+    onVerificarDuplicatas.mockResolvedValueOnce([duplicataDe(7)]);
+    await abrirSheet();
+    await preencherDespesa();
+    await tocar('botao-camera');
+    await tocar('menu-tirar-foto');
+    await tocar('botao-salvar');
+
+    await tocar('alerta-duplicata-revisar');
+
+    expect(alertaAberto()).toBe(false);
+    expect(onSalvar).not.toHaveBeenCalled();
+    expect(existe('novo-lancamento-sheet')).toBe(true);
+    expect(textoDe(porId('valor-display'))).toBe('89,90');
+    expect(porId('categoria-alimentacao').props.accessibilityState).toEqual({
+      checked: true,
+    });
+    expect(existe('comprovante-anexado')).toBe(true);
+  });
+
+  it('"Salvar mesmo assim" fecha o alerta e chama onSalvar uma vez', async () => {
+    onVerificarDuplicatas.mockResolvedValueOnce([duplicataDe(7)]);
+    await abrirSheet();
+    await preencherDespesa();
+    await tocar('botao-salvar');
+
+    await tocar('alerta-duplicata-salvar');
+
+    expect(alertaAberto()).toBe(false);
+    expect(onSalvar).toHaveBeenCalledTimes(1);
+    expect(onSalvar).toHaveBeenCalledWith(
+      expect.objectContaining({valorCentavos: 8990, categoria: 'alimentacao'}),
+    );
+    expect(onVerificarDuplicatas).toHaveBeenCalledTimes(1);
+  });
+
+  it('erro na verificação não impede de salvar', async () => {
+    onVerificarDuplicatas.mockRejectedValueOnce(new Error('banco ocupado'));
+    await abrirSheet();
+    await preencherDespesa();
+    await tocar('botao-salvar');
+
+    expect(onSalvar).toHaveBeenCalledTimes(1);
+    expect(alertaAberto()).toBe(false);
+  });
+
+  it('em edição não chama onVerificarDuplicatas', async () => {
+    await abrirSheet({...despesa, data: hojeISO()});
+    await digitar('⌫');
+    await tocar('botao-salvar');
+
+    expect(onVerificarDuplicatas).not.toHaveBeenCalled();
+    expect(onSalvar).toHaveBeenCalledTimes(1);
+  });
+
+  it('receita não mostra alerta', async () => {
+    await abrirSheet();
+    await tocar('tipo-receita');
+    await digitar('8', '9', ',', '9', '0');
+    await tocar('categoria-salario');
+    await tocar('botao-salvar');
+
+    expect(alertaAberto()).toBe(false);
+    expect(onSalvar).toHaveBeenCalledTimes(1);
+  });
+
+  it('na tela inicial, a mesma despesa duas vezes mostra o alerta', async () => {
+    const repositorio = new RepositorioEmMemoria();
+    armazenamento = new ArmazenamentoFake();
+    cofresRepo = new CofresEmMemoria();
+    await renderizar(repositorio);
+
+    for (let vez = 0; vez < 2; vez++) {
+      await tocar('botao-novo-lancamento');
+      await preencherDespesa();
+      await tocar('botao-salvar');
+    }
+
+    expect(repositorio.criar).toHaveBeenCalledTimes(1);
+    expect(repositorio.buscarCandidatasDuplicata).toHaveBeenLastCalledWith(
+      'despesa',
+      8990,
+      hojeISO(),
+    );
+    expect(alertaAberto()).toBe(true);
+
+    await tocar('alerta-duplicata-salvar');
+    expect(repositorio.criar).toHaveBeenCalledTimes(2);
+  });
+});
+
 describe('HomeScreen: dashboard', () => {
   let repositorio: RepositorioEmMemoria;
   const appStateMock = AppState.addEventListener as unknown as jest.Mock<
@@ -656,7 +918,7 @@ describe('HomeScreen: dashboard', () => {
       {...despesa, data: hojeISO(), valorCentavos: 20000},
     ]);
     await renderizar(repositorio);
-    expect(textoDe(porId('disponivel'))).toBe('R$ -200,00');
+    expect(textoDe(porId('saldo-atual'))).toBe('R$ -200,00');
 
     await tocar('botao-novo-lancamento');
     await tocar('tipo-receita');
@@ -664,14 +926,14 @@ describe('HomeScreen: dashboard', () => {
     await tocar('categoria-salario');
     await tocar('botao-salvar');
 
-    expect(textoDe(porId('disponivel'))).toBe('R$ 1.000,00');
+    expect(textoDe(porId('saldo-atual'))).toBe('R$ 1.000,00');
     expect(textoDe(porId('receitas-mes'))).toBe('+R$ 1.200,00');
     expect(textoDe(porId('despesas-mes'))).toBe('-R$ 200,00');
 
     await tocar('excluir-1');
     await tocar('confirmar-exclusao');
 
-    expect(textoDe(porId('disponivel'))).toBe('R$ 1.200,00');
+    expect(textoDe(porId('saldo-atual'))).toBe('R$ 1.200,00');
     expect(textoDe(porId('despesas-mes'))).toBe('-R$ 0,00');
   });
 
@@ -722,7 +984,7 @@ describe('HomeScreen: dashboard', () => {
       await refresh.props.onRefresh();
     });
 
-    expect(textoDe(porId('disponivel'))).toBe('R$ -89,90');
+    expect(textoDe(porId('saldo-atual'))).toBe('R$ -89,90');
   });
 });
 
@@ -844,8 +1106,7 @@ describe('HomeScreen: cofres virtuais', () => {
 
     await tocar('cofres-voltar');
     expect(existe('cofres-screen')).toBe(false);
-    expect(textoDe(porId('saldo-total'))).toBe('Saldo total R$ 1.000,00');
-    expect(textoDe(porId('disponivel'))).toBe('R$ 700,00');
+    expect(textoDe(porId('saldo-atual'))).toBe('R$ 700,00');
     expect(textoDe(porId('em-cofres'))).toBe('R$ 300,00');
   });
 
@@ -874,7 +1135,7 @@ describe('HomeScreen: cofres virtuais', () => {
       data: hojeISO(),
     });
     await renderizar(repositorio);
-    expect(textoDe(porId('disponivel'))).toBe('R$ 600,00');
+    expect(textoDe(porId('saldo-atual'))).toBe('R$ 600,00');
     expect(textoDe(porId('em-cofres'))).toBe('R$ 400,00');
 
     await tocar('cofre-mini-1');
@@ -893,7 +1154,7 @@ describe('HomeScreen: cofres virtuais', () => {
       'Cofre excluído · R$ 400,00 voltaram para o disponível',
     );
     expect(textoDe(porId('cofres-disponivel'))).toBe('Disponível: R$ 1.000,00');
-    expect(textoDe(porId('disponivel'))).toBe('R$ 1.000,00');
+    expect(textoDe(porId('saldo-atual'))).toBe('R$ 1.000,00');
     expect(textoDe(porId('em-cofres'))).toBe('R$ 0,00');
     expect(textoDe(porId('em-cofres-detalhe'))).toBe('Nenhum cofre');
   });

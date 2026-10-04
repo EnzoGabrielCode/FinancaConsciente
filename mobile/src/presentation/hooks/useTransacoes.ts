@@ -10,6 +10,7 @@ import {
   ultimoDiaDoMesAnterior,
 } from '../../domain/datas';
 import type {ResumoDashboard} from '../../domain/entities/Dashboard';
+import type {PossivelDuplicata} from '../../domain/entities/Duplicata';
 import type {DadosTransacao, Transacao} from '../../domain/entities/Transacao';
 import type {ArmazenamentoComprovantes} from '../../domain/repositories/ArmazenamentoComprovantes';
 import type {CofreRepository} from '../../domain/repositories/CofreRepository';
@@ -30,6 +31,7 @@ export interface UseTransacoes extends EstadoTransacoes {
   criar: (dados: DadosTransacao) => Promise<void>;
   atualizar: (id: number, dados: DadosTransacao) => Promise<void>;
   excluir: (id: number) => Promise<void>;
+  verificarDuplicatas: (dados: DadosTransacao) => Promise<PossivelDuplicata[]>;
 }
 
 export function useTransacoes(
@@ -140,5 +142,17 @@ export function useTransacoes(
     [lancamentos, recarregar],
   );
 
-  return {...estado, recarregar, criar, atualizar, excluir};
+  const verificarDuplicatas = useCallback(
+    (dados: DadosTransacao) => lancamentos.verificarDuplicatas(dados),
+    [lancamentos],
+  );
+
+  return {
+    ...estado,
+    recarregar,
+    criar,
+    atualizar,
+    excluir,
+    verificarDuplicatas,
+  };
 }

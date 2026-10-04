@@ -1,3 +1,5 @@
+import {filtrarDuplicatas} from '../duplicatas';
+import type {PossivelDuplicata} from '../entities/Duplicata';
 import type {DadosTransacao} from '../entities/Transacao';
 import type {ArmazenamentoComprovantes} from '../repositories/ArmazenamentoComprovantes';
 import type {TransacaoRepository} from '../repositories/TransacaoRepository';
@@ -31,6 +33,20 @@ export class LancamentosComComprovante {
     if (uriAnterior && uriAnterior !== definitivos.comprovanteUri) {
       await this.apagarSemFalhar(uriAnterior);
     }
+  }
+
+  async verificarDuplicatas(
+    dados: DadosTransacao,
+  ): Promise<PossivelDuplicata[]> {
+    if (dados.tipo !== 'despesa') {
+      return [];
+    }
+    const candidatas = await this.repositorio.buscarCandidatasDuplicata(
+      dados.tipo,
+      dados.valorCentavos,
+      dados.data,
+    );
+    return filtrarDuplicatas(dados, candidatas);
   }
 
   async excluir(id: number): Promise<void> {
