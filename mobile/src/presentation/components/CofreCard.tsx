@@ -5,7 +5,8 @@ import {IconButton, Menu} from 'react-native-paper';
 import {progressoCofre} from '../../domain/cofres';
 import {formatarCentavos, formatarPercentual} from '../../domain/dinheiro';
 import type {Cofre} from '../../domain/entities/Cofre';
-import {CORES, FONTE_MONO, comAlfa} from '../theme/cores';
+import {CORES, comAlfa} from '../theme/cores';
+import {FONTES} from '../theme/fontes';
 
 interface Props {
   cofre: Cofre;
@@ -48,6 +49,7 @@ function CofreCard({
         <Menu
           visible={menuAberto}
           onDismiss={() => setMenuAberto(false)}
+          contentStyle={styles.menu}
           anchor={
             <IconButton
               icon="dots-vertical"
@@ -154,7 +156,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   emoji: {
+    fontFamily: FONTES.regular,
     fontSize: 22,
+  },
+  menu: {
+    backgroundColor: CORES.superficie2,
   },
   botaoMenu: {
     margin: -8,
@@ -163,14 +169,13 @@ const styles = StyleSheet.create({
     color: CORES.vermelho,
   },
   nome: {
+    fontFamily: FONTES.negrito,
     fontSize: 14,
-    fontWeight: 'bold',
     color: CORES.texto,
   },
   saldo: {
-    fontFamily: FONTE_MONO,
+    fontFamily: FONTES.monoNegrito,
     fontSize: 20,
-    fontWeight: 'bold',
   },
   trilho: {
     height: 6,
@@ -184,6 +189,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   detalhe: {
+    fontFamily: FONTES.regular,
     fontSize: 10,
     color: CORES.textoApagado,
   },

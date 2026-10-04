@@ -14,7 +14,8 @@ import {buscarCategoria, categoriasDo} from '../../domain/categorias';
 import {formatarDataCurta} from '../../domain/datas';
 import {formatarCentavos} from '../../domain/dinheiro';
 import type {Transacao} from '../../domain/entities/Transacao';
-import {CORES, FONTE_MONO, comAlfa, corDoTipo} from '../theme/cores';
+import {CORES, comAlfa, corDoTipo} from '../theme/cores';
+import {FONTES} from '../theme/fontes';
 
 interface Props {
   transacao: Transacao;
@@ -194,8 +195,8 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   textoExcluir: {
+    fontFamily: FONTES.negrito,
     fontSize: 11,
-    fontWeight: 'bold',
     color: '#FFFFFF',
   },
   frente: {
@@ -218,8 +219,8 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   titulo: {
+    fontFamily: FONTES.seminegrito,
     fontSize: 14,
-    fontWeight: '600',
     color: CORES.texto,
   },
   linhaData: {
@@ -228,12 +229,13 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   data: {
+    fontFamily: FONTES.regular,
     fontSize: 11,
     color: CORES.textoApagado,
   },
   seloFixa: {
+    fontFamily: FONTES.negrito,
     fontSize: 9,
-    fontWeight: 'bold',
     color: CORES.verde,
     backgroundColor: comAlfa(CORES.verde, 0.12),
     borderRadius: 6,
@@ -242,9 +244,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   valor: {
-    fontFamily: FONTE_MONO,
+    fontFamily: FONTES.monoNegrito,
     fontSize: 14,
-    fontWeight: 'bold',
   },
 });
 

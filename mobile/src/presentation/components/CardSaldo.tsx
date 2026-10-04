@@ -3,7 +3,8 @@ import {StyleSheet, Text, View} from 'react-native';
 
 import {formatarCentavos} from '../../domain/dinheiro';
 import type {ResumoDashboard} from '../../domain/entities/Dashboard';
-import {CORES, FONTE_MONO, comAlfa} from '../theme/cores';
+import {CORES, comAlfa} from '../theme/cores';
+import {FONTES} from '../theme/fontes';
 import GraficoMensal from './GraficoMensal';
 
 interface Props {
@@ -133,6 +134,7 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   titulo: {
+    fontFamily: FONTES.regular,
     fontSize: 12,
     letterSpacing: 1.2,
     textTransform: 'uppercase',
@@ -140,14 +142,14 @@ const styles = StyleSheet.create({
   },
   saldo: {
     marginTop: -8,
-    fontFamily: FONTE_MONO,
+    fontFamily: FONTES.monoNegrito,
     fontSize: 34,
-    fontWeight: 'bold',
   },
   moeda: {
     color: CORES.texto,
   },
   centavos: {
+    fontFamily: FONTES.monoNegrito,
     fontSize: 18,
     color: CORES.textoSecundario,
   },
@@ -160,21 +162,23 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   rotuloColuna: {
+    fontFamily: FONTES.regular,
     fontSize: 11,
     color: CORES.textoSecundario,
   },
   valorColuna: {
-    fontFamily: FONTE_MONO,
+    fontFamily: FONTES.monoNegrito,
     fontSize: 14,
-    fontWeight: 'bold',
   },
   detalhe: {
+    fontFamily: FONTES.regular,
     fontSize: 11,
     color: CORES.textoSecundario,
   },
   legenda: {
     marginTop: -8,
     alignSelf: 'flex-end',
+    fontFamily: FONTES.regular,
     fontSize: 11,
     color: CORES.textoApagado,
   },

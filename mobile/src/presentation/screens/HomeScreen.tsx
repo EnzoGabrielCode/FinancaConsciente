@@ -35,6 +35,8 @@ import {useDatabase} from '../hooks/useDatabase';
 import {useTransacoes} from '../hooks/useTransacoes';
 import type {SeletorImagem} from '../servicos/seletorImagem';
 import {CORES} from '../theme/cores';
+import {FONTES} from '../theme/fontes';
+import {ESTILO_SNACKBAR, TEMA_SNACKBAR} from '../theme';
 import {mensagemDeErro} from '../utils/mensagemDeErro';
 import CofresScreen from './CofresScreen';
 
@@ -156,7 +158,7 @@ function HomeScreen({
     setTelaCofres({visivel: true, abrirFormulario});
 
   return (
-    <View style={[styles.tela, {backgroundColor: theme.colors.background}]}>
+    <View style={[styles.tela, {backgroundColor: CORES.fundo}]}>
       <View
         style={[styles.cabecalho, {paddingTop: insets.top + 16}]}
         accessibilityRole="header">
@@ -264,7 +266,7 @@ function HomeScreen({
             )}
           </View>
 
-          <Text variant="titleMedium">Últimas Transações</Text>
+          <Text style={styles.textoTituloSecao}>Últimas Transações</Text>
           {lancamentos.carregando && (
             <ActivityIndicator accessibilityLabel="Carregando lançamentos" />
           )}
@@ -302,6 +304,8 @@ function HomeScreen({
           visible={aviso !== null}
           onDismiss={() => setAviso(null)}
           duration={3000}
+          style={styles.snackbar}
+          theme={TEMA_SNACKBAR}
           testID="home-snackbar">
           {aviso ?? ''}
         </Snackbar>
@@ -375,12 +379,13 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   saudacao: {
+    fontFamily: FONTES.regular,
     fontSize: 13,
     color: CORES.textoSecundario,
   },
   marca: {
+    fontFamily: FONTES.negrito,
     fontSize: 20,
-    fontWeight: 'bold',
     color: CORES.texto,
   },
   content: {
@@ -400,11 +405,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   textoTituloSecao: {
+    fontFamily: FONTES.negrito,
     fontSize: 15,
-    fontWeight: 'bold',
     color: CORES.texto,
   },
   verTodos: {
+    fontFamily: FONTES.regular,
     fontSize: 12,
     color: CORES.verde,
   },
@@ -424,6 +430,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.15)',
   },
   textoCofreVazio: {
+    fontFamily: FONTES.regular,
     fontSize: 12,
     color: CORES.textoSecundario,
   },
@@ -451,8 +458,8 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   textoAba: {
+    fontFamily: FONTES.seminegrito,
     fontSize: 11,
-    fontWeight: '600',
     color: CORES.verde,
   },
   fab: {
@@ -471,6 +478,7 @@ const styles = StyleSheet.create({
   fabPressionado: {
     opacity: 0.85,
   },
+  snackbar: ESTILO_SNACKBAR,
 });
 
 export default HomeScreen;

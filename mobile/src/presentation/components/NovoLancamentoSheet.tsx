@@ -45,7 +45,8 @@ import {
   seletorImagemPadrao,
   type SeletorImagem,
 } from '../servicos/seletorImagem';
-import {CORES, FONTE_MONO, comAlfa, corDoTipo} from '../theme/cores';
+import {CORES, comAlfa, corDoTipo} from '../theme/cores';
+import {FONTES} from '../theme/fontes';
 import {mensagemDeErro} from '../utils/mensagemDeErro';
 import AlertaDuplicataDialog from './AlertaDuplicataDialog';
 import ConfirmarExclusaoDialog from './ConfirmarExclusaoDialog';
@@ -665,8 +666,8 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   titulo: {
+    fontFamily: FONTES.negrito,
     fontSize: 18,
-    fontWeight: 'bold',
     color: CORES.texto,
   },
   botaoFechar: {
@@ -695,11 +696,12 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   textoTipo: {
+    fontFamily: FONTES.seminegrito,
     fontSize: 14,
-    fontWeight: '600',
     color: CORES.textoSecundario,
   },
   rotulo: {
+    fontFamily: FONTES.regular,
     fontSize: 12,
     color: CORES.textoApagado,
     letterSpacing: 1,
@@ -726,20 +728,21 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(100,181,246,0.25)',
   },
   moeda: {
+    fontFamily: FONTES.regular,
     fontSize: 14,
     color: CORES.textoSecundario,
   },
   valor: {
     flexShrink: 1,
-    fontFamily: FONTE_MONO,
+    fontFamily: FONTES.monoNegrito,
     fontSize: 44,
-    fontWeight: 'bold',
   },
   linhaChips: {
     flexDirection: 'row',
     gap: 8,
   },
   rotuloSecao: {
+    fontFamily: FONTES.regular,
     fontSize: 14,
     color: CORES.textoSecundario,
     marginBottom: 8,
@@ -759,6 +762,7 @@ const styles = StyleSheet.create({
     backgroundColor: CORES.realce,
   },
   textoCategoria: {
+    fontFamily: FONTES.regular,
     fontSize: 10,
     color: CORES.textoSecundario,
   },
@@ -785,6 +789,7 @@ const styles = StyleSheet.create({
   },
   textoComprovante: {
     flex: 1,
+    fontFamily: FONTES.regular,
     fontSize: 12,
     color: CORES.textoSecundario,
   },
@@ -810,8 +815,8 @@ const styles = StyleSheet.create({
     backgroundColor: CORES.realceForte,
   },
   textoSalvar: {
+    fontFamily: FONTES.negrito,
     fontSize: 16,
-    fontWeight: 'bold',
     color: CORES.fundo,
   },
   textoSalvarDesabilitado: {

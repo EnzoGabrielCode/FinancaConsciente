@@ -14,7 +14,9 @@ import CofreFormSheet from '../components/CofreFormSheet';
 import ConfirmarExclusaoDialog from '../components/ConfirmarExclusaoDialog';
 import MovimentarCofreSheet from '../components/MovimentarCofreSheet';
 import type {UseCofres} from '../hooks/useCofres';
-import {CORES, FONTE_MONO} from '../theme/cores';
+import {CORES} from '../theme/cores';
+import {FONTES} from '../theme/fontes';
+import {ESTILO_SNACKBAR, TEMA_SNACKBAR} from '../theme';
 import {mensagemDeErro} from '../utils/mensagemDeErro';
 
 interface Props {
@@ -272,6 +274,8 @@ function CofresScreen({
             visible={aviso !== null}
             onDismiss={() => setAviso(null)}
             duration={3000}
+            style={styles.snackbar}
+            theme={TEMA_SNACKBAR}
             testID="cofres-snackbar">
             {aviso ?? ''}
           </Snackbar>
@@ -333,8 +337,8 @@ const styles = StyleSheet.create({
   titulo: {
     flex: 1,
     textAlign: 'center',
+    fontFamily: FONTES.negrito,
     fontSize: 18,
-    fontWeight: 'bold',
     color: CORES.texto,
   },
   espacoCabecalho: {
@@ -370,14 +374,14 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   rotuloTotal: {
+    fontFamily: FONTES.regular,
     fontSize: 12,
     letterSpacing: 1.2,
     color: CORES.textoSecundario,
   },
   valorTotal: {
-    fontFamily: FONTE_MONO,
+    fontFamily: FONTES.monoNegrito,
     fontSize: 32,
-    fontWeight: 'bold',
   },
   moedaTotal: {
     color: CORES.texto,
@@ -386,6 +390,7 @@ const styles = StyleSheet.create({
     color: CORES.verde,
   },
   detalheTotal: {
+    fontFamily: FONTES.regular,
     fontSize: 12,
     color: CORES.textoSecundario,
   },
@@ -393,12 +398,12 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   percentualGeral: {
-    fontFamily: FONTE_MONO,
+    fontFamily: FONTES.monoNegrito,
     fontSize: 20,
-    fontWeight: 'bold',
     color: CORES.verde,
   },
   rotuloGeral: {
+    fontFamily: FONTES.regular,
     fontSize: 11,
     color: CORES.textoSecundario,
   },
@@ -414,24 +419,25 @@ const styles = StyleSheet.create({
     backgroundColor: CORES.verde,
   },
   disponivel: {
+    fontFamily: FONTES.regular,
     fontSize: 13,
     color: CORES.textoSecundario,
   },
   valorDisponivel: {
-    fontFamily: FONTE_MONO,
-    fontWeight: 'bold',
+    fontFamily: FONTES.monoNegrito,
     color: CORES.texto,
   },
   negativo: {
     color: CORES.vermelho,
   },
   erro: {
+    fontFamily: FONTES.regular,
     fontSize: 13,
     color: CORES.vermelho,
   },
   quantidade: {
+    fontFamily: FONTES.negrito,
     fontSize: 15,
-    fontWeight: 'bold',
     color: CORES.texto,
   },
   vazio: {
@@ -440,14 +446,16 @@ const styles = StyleSheet.create({
     paddingVertical: 48,
   },
   emojiVazio: {
+    fontFamily: FONTES.regular,
     fontSize: 44,
   },
   tituloVazio: {
+    fontFamily: FONTES.negrito,
     fontSize: 16,
-    fontWeight: 'bold',
     color: CORES.texto,
   },
   textoVazio: {
+    fontFamily: FONTES.regular,
     fontSize: 13,
     color: CORES.textoSecundario,
   },
@@ -465,6 +473,7 @@ const styles = StyleSheet.create({
   fabPressionado: {
     opacity: 0.85,
   },
+  snackbar: ESTILO_SNACKBAR,
 });
 
 export default CofresScreen;

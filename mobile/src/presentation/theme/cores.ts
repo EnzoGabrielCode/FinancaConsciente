@@ -21,8 +21,6 @@ export const CORES = {
   borda: 'rgba(255,255,255,0.06)',
 } as const;
 
-export const FONTE_MONO = 'monospace';
-
 export function corDoTipo(tipo: TipoTransacao): string {
   return tipo === 'receita' ? CORES.verde : CORES.vermelho;
 }

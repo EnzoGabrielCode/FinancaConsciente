@@ -3,7 +3,8 @@ import {Pressable, StyleSheet, Text, View} from 'react-native';
 
 import {formatarCentavos} from '../../domain/dinheiro';
 import type {Cofre} from '../../domain/entities/Cofre';
-import {CORES, FONTE_MONO, comAlfa} from '../theme/cores';
+import {CORES, comAlfa} from '../theme/cores';
+import {FONTES} from '../theme/fontes';
 
 interface Props {
   cofre: Cofre;
@@ -60,16 +61,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   emoji: {
+    fontFamily: FONTES.regular,
     fontSize: 18,
   },
   nome: {
+    fontFamily: FONTES.regular,
     fontSize: 11,
     color: CORES.textoSecundario,
   },
   saldo: {
-    fontFamily: FONTE_MONO,
+    fontFamily: FONTES.monoNegrito,
     fontSize: 14,
-    fontWeight: 'bold',
   },
 });
 

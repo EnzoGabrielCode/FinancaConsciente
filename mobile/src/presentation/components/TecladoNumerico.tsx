@@ -3,7 +3,8 @@ import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {Icon} from 'react-native-paper';
 
 import {aplicarTecla, type Tecla} from '../../domain/dinheiro';
-import {CORES, FONTE_MONO, comAlfa} from '../theme/cores';
+import {CORES, comAlfa} from '../theme/cores';
+import {FONTES} from '../theme/fontes';
 
 interface Props {
   valor: string;
@@ -88,7 +89,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   textoTecla: {
-    fontFamily: FONTE_MONO,
+    fontFamily: FONTES.mono,
     fontSize: 20,
     color: CORES.texto,
   },

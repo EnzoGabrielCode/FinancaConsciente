@@ -21,7 +21,8 @@ import type {
   MovimentoCofre,
   TipoMovimento,
 } from '../../domain/entities/Cofre';
-import {CORES, FONTE_MONO, comAlfa} from '../theme/cores';
+import {CORES, comAlfa} from '../theme/cores';
+import {FONTES} from '../theme/fontes';
 import {mensagemDeErro} from '../utils/mensagemDeErro';
 import TecladoNumerico from './TecladoNumerico';
 
@@ -340,11 +341,12 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   titulo: {
+    fontFamily: FONTES.negrito,
     fontSize: 18,
-    fontWeight: 'bold',
     color: CORES.texto,
   },
   subtitulo: {
+    fontFamily: FONTES.regular,
     fontSize: 12,
     color: CORES.textoSecundario,
   },
@@ -374,11 +376,12 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   textoTipo: {
+    fontFamily: FONTES.seminegrito,
     fontSize: 14,
-    fontWeight: '600',
     color: CORES.textoSecundario,
   },
   limite: {
+    fontFamily: FONTES.regular,
     fontSize: 12,
     color: CORES.textoSecundario,
   },
@@ -391,14 +394,14 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   moeda: {
+    fontFamily: FONTES.regular,
     fontSize: 14,
     color: CORES.textoSecundario,
   },
   valor: {
     flexShrink: 1,
-    fontFamily: FONTE_MONO,
+    fontFamily: FONTES.monoNegrito,
     fontSize: 44,
-    fontWeight: 'bold',
   },
   botao: {
     height: 52,
@@ -410,8 +413,8 @@ const styles = StyleSheet.create({
     backgroundColor: CORES.realceForte,
   },
   textoBotao: {
+    fontFamily: FONTES.negrito,
     fontSize: 16,
-    fontWeight: 'bold',
     color: CORES.fundo,
   },
   textoBotaoDesabilitado: {
@@ -421,6 +424,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   rotuloSecao: {
+    fontFamily: FONTES.regular,
     fontSize: 14,
     color: CORES.textoSecundario,
   },
@@ -434,17 +438,18 @@ const styles = StyleSheet.create({
     backgroundColor: CORES.realce,
   },
   textoMovimento: {
+    fontFamily: FONTES.regular,
     fontSize: 13,
     color: CORES.texto,
   },
   dataMovimento: {
+    fontFamily: FONTES.regular,
     fontSize: 11,
     color: CORES.textoApagado,
   },
   valorMovimento: {
-    fontFamily: FONTE_MONO,
+    fontFamily: FONTES.monoNegrito,
     fontSize: 14,
-    fontWeight: 'bold',
   },
 });
 
