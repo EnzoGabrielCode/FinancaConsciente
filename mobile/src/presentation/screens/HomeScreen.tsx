@@ -63,6 +63,24 @@ interface EstadoSheet {
   transacao: Transacao | null;
 }
 
+interface Aba {
+  id: string;
+  nome: string;
+  icone: string;
+}
+
+const ABAS_ESQUERDA: Aba[] = [
+  {id: 'inicio', nome: 'Início', icone: 'home'},
+  {id: 'planejamento', nome: 'Planejamento', icone: 'clipboard-text-outline'},
+];
+
+const ABAS_DIREITA: Aba[] = [
+  {id: 'desafios', nome: 'Desafios', icone: 'trophy-outline'},
+  {id: 'assistente', nome: 'Assistente IA', icone: 'robot-outline'},
+];
+
+const ABA_ATIVA = 'inicio';
+
 function HomeScreen({
   repositorio,
   armazenamento,
@@ -159,10 +177,32 @@ function HomeScreen({
   const abrirCofres = (abrirFormulario = false) =>
     setTelaCofres({visivel: true, abrirFormulario});
 
+  const renderizarAba = (aba: Aba) => {
+    const ativa = aba.id === ABA_ATIVA;
+    const cor = ativa ? CORES.verde : CORES.textoApagado;
+    return (
+      <Pressable
+        key={aba.id}
+        onPress={ativa ? undefined : () => setAviso('Disponível em breve')}
+        accessibilityRole="tab"
+        accessibilityState={{selected: ativa}}
+        accessibilityLabel={aba.nome}
+        testID={`aba-${aba.id}`}
+        style={styles.aba}>
+        <Icon source={aba.icone} size={22} color={cor} />
+        <Text
+          style={[styles.textoAba, {color: cor}, ativa && styles.textoAbaAtiva]}
+          numberOfLines={1}>
+          {aba.nome}
+        </Text>
+      </Pressable>
+    );
+  };
+
   return (
     <View style={[styles.tela, {backgroundColor: CORES.fundo}]}>
       <View
-        style={[styles.cabecalho, {paddingTop: insets.top + 16}]}
+        style={[styles.cabecalho, {paddingTop: insets.top + 20}]}
         accessibilityRole="header">
         <Text style={styles.saudacao} testID="saudacao">
           {saudacao()}
@@ -313,21 +353,10 @@ function HomeScreen({
         </Snackbar>
       </View>
 
-      <View style={styles.rodape} pointerEvents="box-none">
-        <View
-          style={[styles.barra, {paddingBottom: insets.bottom}]}
-          accessibilityRole="tablist">
-          <View
-            style={styles.aba}
-            accessibilityRole="tab"
-            accessibilityState={{selected: true}}
-            accessibilityLabel="Início">
-            <Icon source="home" size={24} color={CORES.verde} />
-            <Text style={styles.textoAba}>Início</Text>
-          </View>
-          <View style={styles.aba} />
-          <View style={styles.aba} />
-        </View>
+      <View
+        style={[styles.barra, {paddingBottom: 20 + insets.bottom}]}
+        accessibilityRole="tablist">
+        {ABAS_ESQUERDA.map(renderizarAba)}
         <Pressable
           onPress={abrirNovo}
           accessibilityRole="button"
@@ -341,6 +370,7 @@ function HomeScreen({
           />
           <Icon source="plus" size={28} color={CORES.fundo} />
         </Pressable>
+        {ABAS_DIREITA.map(renderizarAba)}
       </View>
 
       <NovoLancamentoSheet
@@ -372,7 +402,6 @@ function HomeScreen({
 }
 
 const TAMANHO_FAB = 56;
-const ELEVACAO_FAB = 20;
 
 const styles = StyleSheet.create({
   tela: {
@@ -388,6 +417,7 @@ const styles = StyleSheet.create({
   saudacao: {
     fontFamily: FONTES.regular,
     fontSize: 13,
+    letterSpacing: 0.3,
     color: CORES.textoSecundario,
   },
   marca: {
@@ -398,7 +428,7 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: 20,
     paddingVertical: 16,
-    gap: 16,
+    gap: 24,
   },
   carregandoResumo: {
     height: 200,
@@ -417,7 +447,7 @@ const styles = StyleSheet.create({
     color: CORES.texto,
   },
   verTodos: {
-    fontFamily: FONTES.regular,
+    fontFamily: FONTES.seminegrito,
     fontSize: 12,
     color: CORES.verde,
   },
@@ -446,34 +476,32 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   lista: {
-    gap: 8,
-  },
-  rodape: {
-    paddingTop: ELEVACAO_FAB,
+    gap: 4,
   },
   barra: {
     flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingTop: 8,
+    paddingHorizontal: 16,
     backgroundColor: CORES.barra,
     borderTopWidth: 1,
     borderTopColor: CORES.borda,
   },
   aba: {
     flex: 1,
-    height: 60,
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 2,
+    gap: 3,
   },
   textoAba: {
+    fontFamily: FONTES.regular,
+    fontSize: 10,
+  },
+  textoAbaAtiva: {
     fontFamily: FONTES.seminegrito,
-    fontSize: 11,
-    color: CORES.verde,
   },
   fab: {
-    position: 'absolute',
-    top: 0,
-    left: '50%',
-    marginLeft: -TAMANHO_FAB / 2,
+    marginTop: -20,
+    marginHorizontal: 8,
     width: TAMANHO_FAB,
     height: TAMANHO_FAB,
     borderRadius: TAMANHO_FAB / 2,

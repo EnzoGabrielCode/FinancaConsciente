@@ -45,10 +45,10 @@ const styles = StyleSheet.create({
     minWidth: 120,
     backgroundColor: CORES.superficie,
     borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 16,
     borderWidth: 1,
-    gap: 8,
+    elevation: 3,
   },
   pressionado: {
     opacity: 0.8,
@@ -59,6 +59,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 10,
   },
   emoji: {
     fontFamily: FONTES.regular,
@@ -70,6 +71,7 @@ const styles = StyleSheet.create({
     color: CORES.textoSecundario,
   },
   saldo: {
+    marginTop: 3,
     fontFamily: FONTES.monoNegrito,
     fontSize: 14,
   },

@@ -203,8 +203,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    padding: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
     borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
     backgroundColor: CORES.superficie,
   },
   icone: {
@@ -219,7 +222,7 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   titulo: {
-    fontFamily: FONTES.seminegrito,
+    fontFamily: FONTES.medio,
     fontSize: 14,
     color: CORES.texto,
   },

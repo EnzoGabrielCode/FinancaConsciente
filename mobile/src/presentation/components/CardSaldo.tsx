@@ -138,19 +138,21 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: comAlfa(CORES.verde, 0.12),
     elevation: 2,
-    gap: 16,
+    // 12 acima e abaixo das colunas; o título e a legenda compensam com margem.
+    gap: 12,
   },
   titulo: {
     fontFamily: FONTES.regular,
     fontSize: 12,
-    letterSpacing: 1.2,
+    letterSpacing: 0.7,
     textTransform: 'uppercase',
     color: CORES.textoSecundario,
   },
   saldo: {
-    marginTop: -8,
+    marginTop: -6,
     fontFamily: FONTES.monoNegrito,
     fontSize: 34,
+    letterSpacing: -0.7,
   },
   moeda: {
     color: CORES.texto,
@@ -174,7 +176,7 @@ const styles = StyleSheet.create({
     color: CORES.textoSecundario,
   },
   valorColuna: {
-    fontFamily: FONTES.monoNegrito,
+    fontFamily: FONTES.monoSeminegrito,
     fontSize: 14,
   },
   detalhe: {
@@ -183,7 +185,7 @@ const styles = StyleSheet.create({
     color: CORES.textoSecundario,
   },
   legenda: {
-    marginTop: -8,
+    marginTop: -4,
     alignSelf: 'flex-end',
     fontFamily: FONTES.regular,
     fontSize: 11,
