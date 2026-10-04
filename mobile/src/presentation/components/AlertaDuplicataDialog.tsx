@@ -11,6 +11,7 @@ import type {
   PossivelDuplicata,
 } from '../../domain/entities/Duplicata';
 import {CORES} from '../theme/cores';
+import {FONTES} from '../theme/fontes';
 
 export const MAX_ITENS_DUPLICATA = 3;
 
@@ -126,17 +127,19 @@ function AlertaDuplicataDialog({
 
 const styles = StyleSheet.create({
   dialogo: {
-    backgroundColor: CORES.superficie,
+    backgroundColor: CORES.superficie2,
   },
   titulo: {
     textAlign: 'center',
+    fontFamily: FONTES.negrito,
   },
   conteudo: {
     gap: 8,
   },
   texto: {
+    fontFamily: FONTES.regular,
     fontSize: 14,
-    color: CORES.texto,
+    color: CORES.textoSecundario,
   },
   item: {
     flexDirection: 'row',
@@ -150,23 +153,27 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   categoria: {
+    fontFamily: FONTES.seminegrito,
     fontSize: 13,
-    fontWeight: '600',
     color: CORES.texto,
   },
   descricao: {
+    fontFamily: FONTES.regular,
     fontSize: 12,
     color: CORES.textoSecundario,
   },
   hora: {
+    fontFamily: FONTES.regular,
     fontSize: 12,
     color: CORES.textoSecundario,
   },
   mais: {
+    fontFamily: FONTES.regular,
     fontSize: 12,
     color: CORES.textoSecundario,
   },
   motivo: {
+    fontFamily: FONTES.regular,
     fontSize: 13,
     color: CORES.textoSecundario,
   },

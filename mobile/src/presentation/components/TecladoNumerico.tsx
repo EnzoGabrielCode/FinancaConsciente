@@ -3,7 +3,8 @@ import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {Icon} from 'react-native-paper';
 
 import {aplicarTecla, type Tecla} from '../../domain/dinheiro';
-import {CORES, FONTE_MONO, comAlfa} from '../theme/cores';
+import {CORES, comAlfa} from '../theme/cores';
+import {FONTES} from '../theme/fontes';
 
 interface Props {
   valor: string;
@@ -80,15 +81,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: CORES.realce,
+    borderWidth: 1,
+    borderColor: CORES.realceForte,
   },
   teclaApagar: {
     backgroundColor: comAlfa(CORES.vermelho, 0.1),
+    borderColor: comAlfa(CORES.vermelho, 0.2),
   },
   teclaPressionada: {
     opacity: 0.6,
   },
   textoTecla: {
-    fontFamily: FONTE_MONO,
+    fontFamily: FONTES.monoMedio,
     fontSize: 20,
     color: CORES.texto,
   },

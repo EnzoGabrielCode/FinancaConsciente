@@ -1,9 +1,12 @@
 import React from 'react';
 import {StyleSheet, Text, View} from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 
 import {formatarCentavos} from '../../domain/dinheiro';
 import type {ResumoDashboard} from '../../domain/entities/Dashboard';
-import {CORES, FONTE_MONO, comAlfa} from '../theme/cores';
+import {CORES, comAlfa} from '../theme/cores';
+import {DEGRADES, DIAGONAL} from '../theme/degrades';
+import {FONTES} from '../theme/fontes';
 import GraficoMensal from './GraficoMensal';
 
 interface Props {
@@ -74,7 +77,11 @@ function CardSaldo({resumo, quantidadeCofres}: Props): React.JSX.Element {
   const corSaldo = resumo.disponivelCentavos < 0 ? CORES.vermelho : CORES.verde;
 
   return (
-    <View style={styles.card} testID="card-saldo">
+    <LinearGradient
+      colors={DEGRADES.cardSaldo}
+      {...DIAGONAL}
+      style={styles.card}
+      testID="card-saldo">
       <Text style={styles.titulo}>SALDO ATUAL</Text>
 
       <Text
@@ -118,36 +125,40 @@ function CardSaldo({resumo, quantidadeCofres}: Props): React.JSX.Element {
 
       <GraficoMensal serie={resumo.serie} />
       <Text style={styles.legenda}>Últimos {resumo.serie.length} meses</Text>
-    </View>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: CORES.superficie,
     borderRadius: 24,
-    padding: 20,
+    paddingTop: 20,
+    paddingHorizontal: 20,
+    paddingBottom: 16,
     borderWidth: 1,
     borderColor: comAlfa(CORES.verde, 0.12),
     elevation: 2,
-    gap: 16,
+    // 12 acima e abaixo das colunas; o título e a legenda compensam com margem.
+    gap: 12,
   },
   titulo: {
+    fontFamily: FONTES.regular,
     fontSize: 12,
-    letterSpacing: 1.2,
+    letterSpacing: 0.7,
     textTransform: 'uppercase',
     color: CORES.textoSecundario,
   },
   saldo: {
-    marginTop: -8,
-    fontFamily: FONTE_MONO,
+    marginTop: -6,
+    fontFamily: FONTES.monoNegrito,
     fontSize: 34,
-    fontWeight: 'bold',
+    letterSpacing: -0.7,
   },
   moeda: {
     color: CORES.texto,
   },
   centavos: {
+    fontFamily: FONTES.monoNegrito,
     fontSize: 18,
     color: CORES.textoSecundario,
   },
@@ -160,21 +171,23 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   rotuloColuna: {
+    fontFamily: FONTES.regular,
     fontSize: 11,
     color: CORES.textoSecundario,
   },
   valorColuna: {
-    fontFamily: FONTE_MONO,
+    fontFamily: FONTES.monoSeminegrito,
     fontSize: 14,
-    fontWeight: 'bold',
   },
   detalhe: {
+    fontFamily: FONTES.regular,
     fontSize: 11,
     color: CORES.textoSecundario,
   },
   legenda: {
-    marginTop: -8,
+    marginTop: -4,
     alignSelf: 'flex-end',
+    fontFamily: FONTES.regular,
     fontSize: 11,
     color: CORES.textoApagado,
   },

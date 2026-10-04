@@ -25,6 +25,27 @@ export function formatarDataCurta(data: string): string {
   return `${dia}/${mes}/${ano}`;
 }
 
+export function formatarDataAmigavel(
+  dataISO: string,
+  hoje: Date = new Date(),
+): string {
+  if (dataISO === hojeISO(hoje)) {
+    return 'Hoje';
+  }
+  const ontem = new Date(
+    hoje.getFullYear(),
+    hoje.getMonth(),
+    hoje.getDate() - 1,
+  );
+  if (dataISO === hojeISO(ontem)) {
+    return 'Ontem';
+  }
+  const [ano, mes, dia] = dataISO.split('-');
+  return Number(ano) === hoje.getFullYear()
+    ? `${dia}/${mes}`
+    : `${dia}/${mes}/${ano}`;
+}
+
 const ROTULOS_MES = [
   'jan',
   'fev',

@@ -9,6 +9,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 import {
   Button,
   Chip,
@@ -45,7 +46,9 @@ import {
   seletorImagemPadrao,
   type SeletorImagem,
 } from '../servicos/seletorImagem';
-import {CORES, FONTE_MONO, comAlfa, corDoTipo} from '../theme/cores';
+import {CORES, comAlfa, corDoTipo} from '../theme/cores';
+import {DEGRADES, DIAGONAL} from '../theme/degrades';
+import {FONTES} from '../theme/fontes';
 import {mensagemDeErro} from '../utils/mensagemDeErro';
 import AlertaDuplicataDialog from './AlertaDuplicataDialog';
 import ConfirmarExclusaoDialog from './ConfirmarExclusaoDialog';
@@ -332,6 +335,10 @@ function NovoLancamentoSheet({
               <View>
                 <Text style={styles.rotulo}>VALOR</Text>
                 <View style={styles.linhaValorAcoes}>
+                  {tipo === 'despesa' && (
+                    // Contrapeso da câmera: mantém o número no centro da largura.
+                    <View style={styles.espacoCamera} />
+                  )}
                   <View style={styles.linhaValor}>
                     <Text style={styles.moeda}>R$</Text>
                     <Text
@@ -414,8 +421,8 @@ function NovoLancamentoSheet({
                         style={[
                           styles.categoria,
                           selecionada && {
-                            backgroundColor: comAlfa(item.cor, 0.12),
-                            borderColor: comAlfa(item.cor, 0.12),
+                            backgroundColor: comAlfa(item.cor, 0.125),
+                            borderColor: comAlfa(item.cor, 0.375),
                           },
                         ]}>
                         <Icon
@@ -546,9 +553,22 @@ function NovoLancamentoSheet({
                 style={[
                   styles.botaoSalvar,
                   temValor
-                    ? {backgroundColor: corTipo}
+                    ? [
+                        styles.botaoSalvarAtivo,
+                        // Fundo sólido sob o degradê para o Android desenhar a sombra.
+                        {backgroundColor: corTipo, shadowColor: corTipo},
+                      ]
                     : styles.botaoSalvarDesabilitado,
                 ]}>
+                {temValor && (
+                  <LinearGradient
+                    colors={
+                      tipo === 'receita' ? DEGRADES.verde : DEGRADES.vermelho
+                    }
+                    {...DIAGONAL}
+                    style={styles.degradeBotao}
+                  />
+                )}
                 {salvando ? (
                   <ActivityIndicator color={CORES.fundo} />
                 ) : (
@@ -633,6 +653,9 @@ function NovoLancamentoSheet({
   );
 }
 
+const TAMANHO_CAMERA = 40;
+const ESPACO_CAMERA = 16;
+
 const styles = StyleSheet.create({
   fundo: {
     flex: 1,
@@ -647,14 +670,19 @@ const styles = StyleSheet.create({
     backgroundColor: CORES.superficie,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
+    borderTopWidth: 1,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    elevation: 16,
   },
   alca: {
     alignSelf: 'center',
     width: 36,
     height: 4,
     borderRadius: 2,
-    marginTop: 12,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    marginTop: 10,
+    backgroundColor: 'rgba(255,255,255,0.15)',
   },
   cabecalho: {
     flexDirection: 'row',
@@ -665,8 +693,8 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   titulo: {
+    fontFamily: FONTES.negrito,
     fontSize: 18,
-    fontWeight: 'bold',
     color: CORES.texto,
   },
   botaoFechar: {
@@ -684,40 +712,46 @@ const styles = StyleSheet.create({
   },
   seletorTipo: {
     flexDirection: 'row',
-    padding: 4,
+    padding: 3,
     borderRadius: 12,
     backgroundColor: CORES.realce,
   },
   opcaoTipo: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: 8,
     borderRadius: 10,
   },
   textoTipo: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: CORES.textoSecundario,
+    fontFamily: FONTES.seminegrito,
+    fontSize: 13,
+    color: CORES.textoApagado,
   },
   rotulo: {
+    fontFamily: FONTES.regular,
     fontSize: 12,
     color: CORES.textoApagado,
     letterSpacing: 1,
+    textAlign: 'center',
   },
   linhaValorAcoes: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    justifyContent: 'center',
+    gap: ESPACO_CAMERA,
+  },
+  espacoCamera: {
+    width: TAMANHO_CAMERA,
   },
   linhaValor: {
-    flex: 1,
+    flexShrink: 1,
     flexDirection: 'row',
     alignItems: 'baseline',
     gap: 8,
   },
   botaoCamera: {
-    width: 40,
-    height: 40,
+    width: TAMANHO_CAMERA,
+    height: TAMANHO_CAMERA,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
@@ -726,23 +760,26 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(100,181,246,0.25)',
   },
   moeda: {
+    fontFamily: FONTES.monoMedio,
     fontSize: 14,
     color: CORES.textoSecundario,
   },
   valor: {
     flexShrink: 1,
-    fontFamily: FONTE_MONO,
+    fontFamily: FONTES.monoExtraNegrito,
     fontSize: 44,
-    fontWeight: 'bold',
+    letterSpacing: -0.9,
   },
   linhaChips: {
     flexDirection: 'row',
     gap: 8,
   },
   rotuloSecao: {
-    fontSize: 14,
+    fontFamily: FONTES.regular,
+    fontSize: 12,
+    letterSpacing: 0.5,
     color: CORES.textoSecundario,
-    marginBottom: 8,
+    marginBottom: 10,
   },
   linhaCategorias: {
     gap: 8,
@@ -755,10 +792,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'transparent',
+    borderColor: 'rgba(255,255,255,0.08)',
     backgroundColor: CORES.realce,
   },
   textoCategoria: {
+    fontFamily: FONTES.medio,
     fontSize: 10,
     color: CORES.textoSecundario,
   },
@@ -785,6 +823,7 @@ const styles = StyleSheet.create({
   },
   textoComprovante: {
     flex: 1,
+    fontFamily: FONTES.regular,
     fontSize: 12,
     color: CORES.textoSecundario,
   },
@@ -801,17 +840,25 @@ const styles = StyleSheet.create({
     right: 16,
   },
   botaoSalvar: {
-    height: 52,
     borderRadius: 18,
+    paddingVertical: 16,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  botaoSalvarAtivo: {
+    elevation: 6,
+  },
+  degradeBotao: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 18,
+    overflow: 'hidden',
   },
   botaoSalvarDesabilitado: {
     backgroundColor: CORES.realceForte,
   },
   textoSalvar: {
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontFamily: FONTES.extraNegrito,
+    fontSize: 15,
     color: CORES.fundo,
   },
   textoSalvarDesabilitado: {

@@ -16,6 +16,7 @@ import {
   Text,
   useTheme,
 } from 'react-native-paper';
+import LinearGradient from 'react-native-linear-gradient';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
 import {DATABASE_NAME} from '../../data/database/connection';
@@ -35,6 +36,9 @@ import {useDatabase} from '../hooks/useDatabase';
 import {useTransacoes} from '../hooks/useTransacoes';
 import type {SeletorImagem} from '../servicos/seletorImagem';
 import {CORES} from '../theme/cores';
+import {DEGRADES, DIAGONAL} from '../theme/degrades';
+import {FONTES} from '../theme/fontes';
+import {ESTILO_SNACKBAR, TEMA_SNACKBAR} from '../theme';
 import {mensagemDeErro} from '../utils/mensagemDeErro';
 import CofresScreen from './CofresScreen';
 
@@ -58,6 +62,24 @@ interface EstadoSheet {
   visivel: boolean;
   transacao: Transacao | null;
 }
+
+interface Aba {
+  id: string;
+  nome: string;
+  icone: string;
+}
+
+const ABAS_ESQUERDA: Aba[] = [
+  {id: 'inicio', nome: 'Início', icone: 'home'},
+  {id: 'planejamento', nome: 'Planejamento', icone: 'clipboard-text-outline'},
+];
+
+const ABAS_DIREITA: Aba[] = [
+  {id: 'desafios', nome: 'Desafios', icone: 'trophy-outline'},
+  {id: 'assistente', nome: 'Assistente IA', icone: 'robot-outline'},
+];
+
+const ABA_ATIVA = 'inicio';
 
 function HomeScreen({
   repositorio,
@@ -155,10 +177,32 @@ function HomeScreen({
   const abrirCofres = (abrirFormulario = false) =>
     setTelaCofres({visivel: true, abrirFormulario});
 
+  const renderizarAba = (aba: Aba) => {
+    const ativa = aba.id === ABA_ATIVA;
+    const cor = ativa ? CORES.verde : CORES.textoApagado;
+    return (
+      <Pressable
+        key={aba.id}
+        onPress={ativa ? undefined : () => setAviso('Disponível em breve')}
+        accessibilityRole="tab"
+        accessibilityState={{selected: ativa}}
+        accessibilityLabel={aba.nome}
+        testID={`aba-${aba.id}`}
+        style={styles.aba}>
+        <Icon source={aba.icone} size={22} color={cor} />
+        <Text
+          style={[styles.textoAba, {color: cor}, ativa && styles.textoAbaAtiva]}
+          numberOfLines={1}>
+          {aba.nome}
+        </Text>
+      </Pressable>
+    );
+  };
+
   return (
-    <View style={[styles.tela, {backgroundColor: theme.colors.background}]}>
+    <View style={[styles.tela, {backgroundColor: CORES.fundo}]}>
       <View
-        style={[styles.cabecalho, {paddingTop: insets.top + 16}]}
+        style={[styles.cabecalho, {paddingTop: insets.top + 20}]}
         accessibilityRole="header">
         <Text style={styles.saudacao} testID="saudacao">
           {saudacao()}
@@ -264,37 +308,43 @@ function HomeScreen({
             )}
           </View>
 
-          <Text variant="titleMedium">Últimas Transações</Text>
-          {lancamentos.carregando && (
-            <ActivityIndicator accessibilityLabel="Carregando lançamentos" />
-          )}
-          {!lancamentos.carregando && lancamentos.erro && (
-            <View style={styles.erroLista}>
-              <Text style={{color: theme.colors.error}} testID="lista-erro">
-                Não foi possível carregar os lançamentos: {lancamentos.erro}
-              </Text>
-              <Button onPress={lancamentos.recarregar}>Tentar novamente</Button>
-            </View>
-          )}
-          {!lancamentos.carregando &&
-            !lancamentos.erro &&
-            lancamentos.transacoes.length === 0 && (
-              <Text
-                variant="bodyMedium"
-                style={{color: theme.colors.onSurfaceVariant}}
-                testID="lista-vazia">
-                Nenhum lançamento ainda. Toque no + para começar.
-              </Text>
+          <View style={styles.secaoTransacoes} testID="secao-transacoes">
+            <Text style={styles.textoTituloSecao}>Últimas Transações</Text>
+            {lancamentos.carregando && (
+              <ActivityIndicator accessibilityLabel="Carregando lançamentos" />
             )}
-          <View style={styles.lista}>
-            {lancamentos.transacoes.map(transacao => (
-              <TransacaoItem
-                key={transacao.id}
-                transacao={transacao}
-                onPress={abrirEdicao}
-                onExcluir={setParaExcluir}
-              />
-            ))}
+            {!lancamentos.carregando && lancamentos.erro && (
+              <View style={styles.erroLista}>
+                <Text style={{color: theme.colors.error}} testID="lista-erro">
+                  Não foi possível carregar os lançamentos: {lancamentos.erro}
+                </Text>
+                <Button onPress={lancamentos.recarregar}>
+                  Tentar novamente
+                </Button>
+              </View>
+            )}
+            {!lancamentos.carregando &&
+              !lancamentos.erro &&
+              lancamentos.transacoes.length === 0 && (
+                <Text
+                  variant="bodyMedium"
+                  style={{color: theme.colors.onSurfaceVariant}}
+                  testID="lista-vazia">
+                  Nenhum lançamento ainda. Toque no + para começar.
+                </Text>
+              )}
+            {lancamentos.transacoes.length > 0 && (
+              <View style={styles.lista}>
+                {lancamentos.transacoes.map(transacao => (
+                  <TransacaoItem
+                    key={transacao.id}
+                    transacao={transacao}
+                    onPress={abrirEdicao}
+                    onExcluir={setParaExcluir}
+                  />
+                ))}
+              </View>
+            )}
           </View>
         </ScrollView>
 
@@ -302,34 +352,31 @@ function HomeScreen({
           visible={aviso !== null}
           onDismiss={() => setAviso(null)}
           duration={3000}
+          style={styles.snackbar}
+          theme={TEMA_SNACKBAR}
           testID="home-snackbar">
           {aviso ?? ''}
         </Snackbar>
       </View>
 
-      <View style={styles.rodape} pointerEvents="box-none">
-        <View
-          style={[styles.barra, {paddingBottom: insets.bottom}]}
-          accessibilityRole="tablist">
-          <View
-            style={styles.aba}
-            accessibilityRole="tab"
-            accessibilityState={{selected: true}}
-            accessibilityLabel="Início">
-            <Icon source="home" size={24} color={CORES.verde} />
-            <Text style={styles.textoAba}>Início</Text>
-          </View>
-          <View style={styles.aba} />
-          <View style={styles.aba} />
-        </View>
+      <View
+        style={[styles.barra, {paddingBottom: 20 + insets.bottom}]}
+        accessibilityRole="tablist">
+        {ABAS_ESQUERDA.map(renderizarAba)}
         <Pressable
           onPress={abrirNovo}
           accessibilityRole="button"
           accessibilityLabel="Novo lançamento"
           testID="botao-novo-lancamento"
           style={({pressed}) => [styles.fab, pressed && styles.fabPressionado]}>
+          <LinearGradient
+            colors={DEGRADES.verde}
+            {...DIAGONAL}
+            style={styles.degradeFab}
+          />
           <Icon source="plus" size={28} color={CORES.fundo} />
         </Pressable>
+        {ABAS_DIREITA.map(renderizarAba)}
       </View>
 
       <NovoLancamentoSheet
@@ -361,7 +408,6 @@ function HomeScreen({
 }
 
 const TAMANHO_FAB = 56;
-const ELEVACAO_FAB = 20;
 
 const styles = StyleSheet.create({
   tela: {
@@ -372,21 +418,23 @@ const styles = StyleSheet.create({
   },
   cabecalho: {
     paddingHorizontal: 20,
-    paddingBottom: 8,
   },
   saudacao: {
+    fontFamily: FONTES.regular,
     fontSize: 13,
+    letterSpacing: 0.3,
     color: CORES.textoSecundario,
   },
   marca: {
+    fontFamily: FONTES.negrito,
     fontSize: 20,
-    fontWeight: 'bold',
     color: CORES.texto,
   },
   content: {
     paddingHorizontal: 20,
-    paddingVertical: 16,
-    gap: 16,
+    paddingTop: 16,
+    paddingBottom: 16,
+    gap: 24,
   },
   carregandoResumo: {
     height: 200,
@@ -394,17 +442,21 @@ const styles = StyleSheet.create({
   secaoCofres: {
     gap: 12,
   },
+  secaoTransacoes: {
+    gap: 14,
+  },
   tituloSecao: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
   textoTituloSecao: {
+    fontFamily: FONTES.negrito,
     fontSize: 15,
-    fontWeight: 'bold',
     color: CORES.texto,
   },
   verTodos: {
+    fontFamily: FONTES.seminegrito,
     fontSize: 12,
     color: CORES.verde,
   },
@@ -424,6 +476,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.15)',
   },
   textoCofreVazio: {
+    fontFamily: FONTES.regular,
     fontSize: 12,
     color: CORES.textoSecundario,
   },
@@ -432,45 +485,51 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   lista: {
-    gap: 8,
-  },
-  rodape: {
-    paddingTop: ELEVACAO_FAB,
+    gap: 4,
   },
   barra: {
     flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingTop: 8,
+    paddingHorizontal: 16,
     backgroundColor: CORES.barra,
     borderTopWidth: 1,
     borderTopColor: CORES.borda,
   },
   aba: {
     flex: 1,
-    height: 60,
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 2,
+    gap: 3,
   },
   textoAba: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: CORES.verde,
+    fontFamily: FONTES.regular,
+    fontSize: 10,
+  },
+  textoAbaAtiva: {
+    fontFamily: FONTES.seminegrito,
   },
   fab: {
-    position: 'absolute',
-    top: 0,
-    left: '50%',
-    marginLeft: -TAMANHO_FAB / 2,
+    marginTop: -20,
+    marginHorizontal: 8,
     width: TAMANHO_FAB,
     height: TAMANHO_FAB,
     borderRadius: TAMANHO_FAB / 2,
     alignItems: 'center',
     justifyContent: 'center',
+    // O fundo sólido fica sob o degradê; sem ele o Android não desenha a sombra.
     backgroundColor: CORES.verde,
-    elevation: 6,
+    elevation: 8,
+    shadowColor: CORES.verde,
+  },
+  degradeFab: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: TAMANHO_FAB / 2,
+    overflow: 'hidden',
   },
   fabPressionado: {
     opacity: 0.85,
   },
+  snackbar: ESTILO_SNACKBAR,
 });
 
 export default HomeScreen;

@@ -4,6 +4,7 @@ import {StyleSheet, Text, View} from 'react-native';
 import {formatarCentavos} from '../../domain/dinheiro';
 import type {MesSerie} from '../../domain/entities/Dashboard';
 import {CORES} from '../theme/cores';
+import {FONTES} from '../theme/fontes';
 
 interface Props {
   serie: MesSerie[];
@@ -129,6 +130,7 @@ const styles = StyleSheet.create({
   },
   rotulo: {
     marginTop: 6,
+    fontFamily: FONTES.regular,
     fontSize: 10,
     textAlign: 'center',
     color: CORES.textoApagado,
@@ -137,6 +139,7 @@ const styles = StyleSheet.create({
     color: CORES.texto,
   },
   textoVazio: {
+    fontFamily: FONTES.regular,
     fontSize: 12,
     color: CORES.textoApagado,
   },

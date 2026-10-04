@@ -11,10 +11,11 @@ import {
 import {Icon} from 'react-native-paper';
 
 import {buscarCategoria, categoriasDo} from '../../domain/categorias';
-import {formatarDataCurta} from '../../domain/datas';
+import {formatarDataAmigavel} from '../../domain/datas';
 import {formatarCentavos} from '../../domain/dinheiro';
 import type {Transacao} from '../../domain/entities/Transacao';
-import {CORES, FONTE_MONO, comAlfa, corDoTipo} from '../theme/cores';
+import {CORES, comAlfa, corDoTipo} from '../theme/cores';
+import {FONTES} from '../theme/fontes';
 
 interface Props {
   transacao: Transacao;
@@ -80,6 +81,14 @@ function TransacaoItem({
     };
   }, [deslocamento]);
 
+  // Só mostra o vermelho durante o deslize; parado, ele vazaria pela borda
+  // translúcida do card.
+  const opacidadeExcluir = deslocamento.interpolate({
+    inputRange: [-12, 0],
+    outputRange: [1, 0],
+    extrapolate: 'clamp',
+  });
+
   const tocar = () => {
     if (aberto.current) {
       panResponder.animarPara(0);
@@ -103,7 +112,7 @@ function TransacaoItem({
 
   return (
     <View style={styles.container} testID={`transacao-${transacao.id}`}>
-      <View style={styles.fundoExcluir}>
+      <Animated.View style={[styles.fundoExcluir, {opacity: opacidadeExcluir}]}>
         <Pressable
           onPress={excluir}
           accessibilityRole="button"
@@ -113,7 +122,7 @@ function TransacaoItem({
           <Icon source="trash-can-outline" size={22} color="#FFFFFF" />
           <Text style={styles.textoExcluir}>Excluir</Text>
         </Pressable>
-      </View>
+      </Animated.View>
 
       <Animated.View
         style={{transform: [{translateX: deslocamento}]}}
@@ -125,7 +134,7 @@ function TransacaoItem({
             receita ? 'receita' : 'despesa'
           } de ${formatarCentavos(
             transacao.valorCentavos,
-          )}, ${formatarDataCurta(transacao.data)}${fixa ? ', fixa' : ''}${
+          )}, ${formatarDataAmigavel(transacao.data)}${fixa ? ', fixa' : ''}${
             transacao.comprovanteUri !== null ? ', tem comprovante' : ''
           }`}
           accessibilityHint="Toque para editar. Deslize para a esquerda para excluir."
@@ -146,7 +155,7 @@ function TransacaoItem({
             </Text>
             <View style={styles.linhaData}>
               <Text style={styles.data}>
-                {formatarDataCurta(transacao.data)}
+                {formatarDataAmigavel(transacao.data)}
               </Text>
               {transacao.comprovanteUri !== null && (
                 <View
@@ -194,16 +203,19 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   textoExcluir: {
+    fontFamily: FONTES.negrito,
     fontSize: 11,
-    fontWeight: 'bold',
     color: '#FFFFFF',
   },
   frente: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    padding: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
     borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
     backgroundColor: CORES.superficie,
   },
   icone: {
@@ -218,8 +230,8 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   titulo: {
+    fontFamily: FONTES.medio,
     fontSize: 14,
-    fontWeight: '600',
     color: CORES.texto,
   },
   linhaData: {
@@ -228,12 +240,13 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   data: {
+    fontFamily: FONTES.regular,
     fontSize: 11,
     color: CORES.textoApagado,
   },
   seloFixa: {
+    fontFamily: FONTES.negrito,
     fontSize: 9,
-    fontWeight: 'bold',
     color: CORES.verde,
     backgroundColor: comAlfa(CORES.verde, 0.12),
     borderRadius: 6,
@@ -242,9 +255,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   valor: {
-    fontFamily: FONTE_MONO,
+    fontFamily: FONTES.monoNegrito,
     fontSize: 14,
-    fontWeight: 'bold',
   },
 });
 

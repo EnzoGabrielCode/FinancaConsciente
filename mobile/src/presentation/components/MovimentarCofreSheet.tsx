@@ -8,6 +8,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 import {HelperText, Icon} from 'react-native-paper';
 
 import {formatarDataCurta} from '../../domain/datas';
@@ -21,7 +22,9 @@ import type {
   MovimentoCofre,
   TipoMovimento,
 } from '../../domain/entities/Cofre';
-import {CORES, FONTE_MONO, comAlfa} from '../theme/cores';
+import {CORES, comAlfa} from '../theme/cores';
+import {DEGRADES, DIAGONAL} from '../theme/degrades';
+import {FONTES} from '../theme/fontes';
 import {mensagemDeErro} from '../utils/mensagemDeErro';
 import TecladoNumerico from './TecladoNumerico';
 
@@ -250,8 +253,21 @@ function MovimentarCofreSheet({
               testID="movimentar-confirmar"
               style={[
                 styles.botao,
-                temValor ? {backgroundColor: cor} : styles.botaoDesabilitado,
+                temValor
+                  ? [
+                      styles.botaoAtivo,
+                      // Fundo sólido sob o degradê para o Android desenhar a sombra.
+                      {backgroundColor: cor, shadowColor: cor},
+                    ]
+                  : styles.botaoDesabilitado,
               ]}>
+              {temValor && (
+                <LinearGradient
+                  colors={guardando ? DEGRADES.verde : DEGRADES.laranja}
+                  {...DIAGONAL}
+                  style={styles.degradeBotao}
+                />
+              )}
               {salvando ? (
                 <ActivityIndicator color={CORES.fundo} />
               ) : (
@@ -340,11 +356,12 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   titulo: {
+    fontFamily: FONTES.negrito,
     fontSize: 18,
-    fontWeight: 'bold',
     color: CORES.texto,
   },
   subtitulo: {
+    fontFamily: FONTES.regular,
     fontSize: 12,
     color: CORES.textoSecundario,
   },
@@ -374,11 +391,12 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   textoTipo: {
+    fontFamily: FONTES.seminegrito,
     fontSize: 14,
-    fontWeight: '600',
     color: CORES.textoSecundario,
   },
   limite: {
+    fontFamily: FONTES.regular,
     fontSize: 12,
     color: CORES.textoSecundario,
   },
@@ -391,27 +409,35 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   moeda: {
+    fontFamily: FONTES.regular,
     fontSize: 14,
     color: CORES.textoSecundario,
   },
   valor: {
     flexShrink: 1,
-    fontFamily: FONTE_MONO,
+    fontFamily: FONTES.monoNegrito,
     fontSize: 44,
-    fontWeight: 'bold',
   },
   botao: {
-    height: 52,
     borderRadius: 18,
+    paddingVertical: 16,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  botaoAtivo: {
+    elevation: 6,
+  },
+  degradeBotao: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 18,
+    overflow: 'hidden',
   },
   botaoDesabilitado: {
     backgroundColor: CORES.realceForte,
   },
   textoBotao: {
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontFamily: FONTES.extraNegrito,
+    fontSize: 15,
     color: CORES.fundo,
   },
   textoBotaoDesabilitado: {
@@ -421,6 +447,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   rotuloSecao: {
+    fontFamily: FONTES.regular,
     fontSize: 14,
     color: CORES.textoSecundario,
   },
@@ -434,17 +461,18 @@ const styles = StyleSheet.create({
     backgroundColor: CORES.realce,
   },
   textoMovimento: {
+    fontFamily: FONTES.regular,
     fontSize: 13,
     color: CORES.texto,
   },
   dataMovimento: {
+    fontFamily: FONTES.regular,
     fontSize: 11,
     color: CORES.textoApagado,
   },
   valorMovimento: {
-    fontFamily: FONTE_MONO,
+    fontFamily: FONTES.monoNegrito,
     fontSize: 14,
-    fontWeight: 'bold',
   },
 });
 

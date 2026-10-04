@@ -1,11 +1,19 @@
 import React, {useState} from 'react';
-import {Pressable, StyleSheet, Text, View} from 'react-native';
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 import {IconButton, Menu} from 'react-native-paper';
 
 import {progressoCofre} from '../../domain/cofres';
 import {formatarCentavos, formatarPercentual} from '../../domain/dinheiro';
 import type {Cofre} from '../../domain/entities/Cofre';
-import {CORES, FONTE_MONO, comAlfa} from '../theme/cores';
+import {CORES, comAlfa} from '../theme/cores';
+import {FONTES} from '../theme/fontes';
 
 interface Props {
   cofre: Cofre;
@@ -14,6 +22,7 @@ interface Props {
   onRetirar: (cofre: Cofre) => void;
   onEditar: (cofre: Cofre) => void;
   onExcluir: (cofre: Cofre) => void;
+  style?: StyleProp<ViewStyle>;
 }
 
 function CofreCard({
@@ -23,6 +32,7 @@ function CofreCard({
   onRetirar,
   onEditar,
   onExcluir,
+  style,
 }: Props): React.JSX.Element {
   const [menuAberto, setMenuAberto] = useState(false);
   const progresso = progressoCofre(cofre.saldoCentavos, cofre.metaCentavos);
@@ -39,7 +49,12 @@ function CofreCard({
       accessibilityRole="button"
       accessibilityLabel={`Cofre ${cofre.nome}: ${saldo} guardados`}
       testID={`cofre-card-${cofre.id}`}
-      style={({pressed}) => [styles.card, pressed && styles.pressionado]}>
+      style={({pressed}) => [
+        styles.card,
+        style,
+        {borderColor: comAlfa(cofre.cor, 0.13)},
+        pressed && styles.pressionado,
+      ]}>
       <View style={styles.topo}>
         <View
           style={[styles.icone, {backgroundColor: comAlfa(cofre.cor, 0.12)}]}>
@@ -48,6 +63,7 @@ function CofreCard({
         <Menu
           visible={menuAberto}
           onDismiss={() => setMenuAberto(false)}
+          contentStyle={styles.menu}
           anchor={
             <IconButton
               icon="dots-vertical"
@@ -131,10 +147,10 @@ function CofreCard({
 
 const styles = StyleSheet.create({
   card: {
-    flex: 1,
     backgroundColor: CORES.superficie,
     borderRadius: 22,
     padding: 16,
+    borderWidth: 1,
     gap: 6,
   },
   pressionado: {
@@ -154,7 +170,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   emoji: {
+    fontFamily: FONTES.regular,
     fontSize: 22,
+  },
+  menu: {
+    backgroundColor: CORES.superficie2,
   },
   botaoMenu: {
     margin: -8,
@@ -163,14 +183,13 @@ const styles = StyleSheet.create({
     color: CORES.vermelho,
   },
   nome: {
+    fontFamily: FONTES.negrito,
     fontSize: 14,
-    fontWeight: 'bold',
     color: CORES.texto,
   },
   saldo: {
-    fontFamily: FONTE_MONO,
+    fontFamily: FONTES.monoNegrito,
     fontSize: 20,
-    fontWeight: 'bold',
   },
   trilho: {
     height: 6,
@@ -184,6 +203,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   detalhe: {
+    fontFamily: FONTES.regular,
     fontSize: 10,
     color: CORES.textoApagado,
   },

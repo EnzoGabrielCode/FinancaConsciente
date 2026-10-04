@@ -25,6 +25,7 @@ import {
 } from '../../domain/dinheiro';
 import type {Cofre, DadosCofre} from '../../domain/entities/Cofre';
 import {CORES, comAlfa} from '../theme/cores';
+import {FONTES} from '../theme/fontes';
 import {mensagemDeErro} from '../utils/mensagemDeErro';
 
 interface Props {
@@ -352,8 +353,8 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   titulo: {
+    fontFamily: FONTES.negrito,
     fontSize: 18,
-    fontWeight: 'bold',
     color: CORES.texto,
   },
   botaoFechar: {
@@ -366,13 +367,16 @@ const styles = StyleSheet.create({
   },
   conteudo: {
     paddingHorizontal: 20,
+    // Com o paddingBottom 8 do cabeçalho, dá 20 até o rótulo "ÍCONE".
+    paddingTop: 12,
     paddingBottom: 24,
     gap: 18,
   },
   rotulo: {
-    fontSize: 12,
-    color: CORES.textoApagado,
-    letterSpacing: 1,
+    fontFamily: FONTES.seminegrito,
+    fontSize: 11,
+    color: CORES.textoSecundario,
+    letterSpacing: 0.7,
     marginBottom: 8,
   },
   grade: {
@@ -391,6 +395,7 @@ const styles = StyleSheet.create({
     backgroundColor: CORES.realce,
   },
   emojiOpcao: {
+    fontFamily: FONTES.regular,
     fontSize: 20,
   },
   linhaCores: {
@@ -435,6 +440,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   emojiPrevia: {
+    fontFamily: FONTES.regular,
     fontSize: 22,
   },
   textosPrevia: {
@@ -442,17 +448,18 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   nomePrevia: {
+    fontFamily: FONTES.negrito,
     fontSize: 14,
-    fontWeight: 'bold',
     color: CORES.texto,
   },
   metaPrevia: {
+    fontFamily: FONTES.regular,
     fontSize: 12,
     color: CORES.textoSecundario,
   },
   botaoSalvar: {
-    height: 52,
     borderRadius: 18,
+    paddingVertical: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -460,8 +467,8 @@ const styles = StyleSheet.create({
     backgroundColor: CORES.realceForte,
   },
   textoSalvar: {
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontFamily: FONTES.extraNegrito,
+    fontSize: 15,
     color: CORES.fundo,
   },
   textoSalvarDesabilitado: {

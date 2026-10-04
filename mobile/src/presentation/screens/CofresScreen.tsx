@@ -1,6 +1,15 @@
 import React, {useEffect, useState} from 'react';
-import {FlatList, Modal, Pressable, StyleSheet, Text, View} from 'react-native';
+import {
+  FlatList,
+  Modal,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import {Icon, Portal, Snackbar} from 'react-native-paper';
+import LinearGradient from 'react-native-linear-gradient';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
 import {formatarCentavos, formatarPercentual} from '../../domain/dinheiro';
@@ -14,7 +23,10 @@ import CofreFormSheet from '../components/CofreFormSheet';
 import ConfirmarExclusaoDialog from '../components/ConfirmarExclusaoDialog';
 import MovimentarCofreSheet from '../components/MovimentarCofreSheet';
 import type {UseCofres} from '../hooks/useCofres';
-import {CORES, FONTE_MONO} from '../theme/cores';
+import {CORES} from '../theme/cores';
+import {DEGRADES, DIAGONAL, HORIZONTAL} from '../theme/degrades';
+import {FONTES} from '../theme/fontes';
+import {ESTILO_SNACKBAR, TEMA_SNACKBAR} from '../theme';
 import {mensagemDeErro} from '../utils/mensagemDeErro';
 
 interface Props {
@@ -35,6 +47,8 @@ interface EstadoMovimento {
 }
 
 const TAMANHO_FAB = 56;
+const MARGEM_LISTA = 20;
+const GAP_GRADE = 12;
 
 export const textoQuantidade = (quantidade: number) =>
   `${quantidade} ${quantidade === 1 ? 'cofre' : 'cofres'}`;
@@ -46,6 +60,10 @@ function CofresScreen({
   onFechar,
 }: Props): React.JSX.Element {
   const insets = useSafeAreaInsets();
+  // Largura fixa de meia linha: com número ímpar de cofres o último card não
+  // estica até a largura toda.
+  const larguraCard =
+    (useWindowDimensions().width - MARGEM_LISTA * 2 - GAP_GRADE) / 2;
   const [form, setForm] = useState<EstadoForm>({visivel: false, cofre: null});
   const [movimento, setMovimento] = useState<EstadoMovimento>({
     cofreId: null,
@@ -125,7 +143,11 @@ function CofresScreen({
 
   const cabecalhoLista = (
     <View style={styles.cabecalhoLista}>
-      <View style={styles.cardTotal} testID="cofres-total">
+      <LinearGradient
+        colors={DEGRADES.cardTotal}
+        {...DIAGONAL}
+        style={styles.cardTotal}
+        testID="cofres-total">
         <View style={styles.linhaTotal}>
           <View style={styles.colunaTotal}>
             <Text style={styles.rotuloTotal}>TOTAL GUARDADO</Text>
@@ -168,7 +190,9 @@ function CofresScreen({
         </View>
         {resumo.progressoGeral !== null && (
           <View style={styles.trilhoGeral}>
-            <View
+            <LinearGradient
+              colors={DEGRADES.progresso}
+              {...HORIZONTAL}
               style={[
                 styles.preenchimentoGeral,
                 {width: `${resumo.progressoGeral * 100}%`},
@@ -186,7 +210,7 @@ function CofresScreen({
             {formatarCentavos(disponivelCentavos)}
           </Text>
         </Text>
-      </View>
+      </LinearGradient>
 
       {cofres.erro && (
         <Text style={styles.erro} testID="cofres-erro">
@@ -196,7 +220,9 @@ function CofresScreen({
 
       {cofres.cofres.length > 0 && (
         <Text style={styles.quantidade} testID="cofres-quantidade">
-          {textoQuantidade(cofres.cofres.length)}
+          {cofres.cofres.length === 1
+            ? '1 cofre ativo'
+            : `${cofres.cofres.length} cofres ativos`}
         </Text>
       )}
     </View>
@@ -244,6 +270,7 @@ function CofresScreen({
             ListEmptyComponent={vazio}
             renderItem={({item}) => (
               <CofreCard
+                style={{width: larguraCard}}
                 cofre={item}
                 onPress={abrirMovimento('deposito')}
                 onGuardar={abrirMovimento('deposito')}
@@ -265,6 +292,11 @@ function CofresScreen({
               {bottom: insets.bottom + 24},
               pressed && styles.fabPressionado,
             ]}>
+            <LinearGradient
+              colors={DEGRADES.verde}
+              {...DIAGONAL}
+              style={styles.degradeFab}
+            />
             <Icon source="plus" size={28} color={CORES.fundo} />
           </Pressable>
 
@@ -272,6 +304,8 @@ function CofresScreen({
             visible={aviso !== null}
             onDismiss={() => setAviso(null)}
             duration={3000}
+            style={styles.snackbar}
+            theme={TEMA_SNACKBAR}
             testID="cofres-snackbar">
             {aviso ?? ''}
           </Snackbar>
@@ -333,27 +367,27 @@ const styles = StyleSheet.create({
   titulo: {
     flex: 1,
     textAlign: 'center',
+    fontFamily: FONTES.extraNegrito,
     fontSize: 18,
-    fontWeight: 'bold',
+    letterSpacing: -0.2,
     color: CORES.texto,
   },
   espacoCabecalho: {
     width: 38,
   },
   lista: {
-    paddingHorizontal: 20,
+    paddingHorizontal: MARGEM_LISTA,
     paddingTop: 8,
     gap: 12,
   },
   linhaGrade: {
-    gap: 12,
+    gap: GAP_GRADE,
   },
   cabecalhoLista: {
     gap: 16,
     marginBottom: 4,
   },
   cardTotal: {
-    backgroundColor: CORES.superficie,
     borderRadius: 22,
     padding: 20,
     borderWidth: 1,
@@ -370,14 +404,15 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   rotuloTotal: {
-    fontSize: 12,
-    letterSpacing: 1.2,
+    fontFamily: FONTES.regular,
+    fontSize: 11,
+    letterSpacing: 0.7,
     color: CORES.textoSecundario,
   },
   valorTotal: {
-    fontFamily: FONTE_MONO,
+    fontFamily: FONTES.monoExtraNegrito,
     fontSize: 32,
-    fontWeight: 'bold',
+    letterSpacing: -1,
   },
   moedaTotal: {
     color: CORES.texto,
@@ -386,6 +421,7 @@ const styles = StyleSheet.create({
     color: CORES.verde,
   },
   detalheTotal: {
+    fontFamily: FONTES.regular,
     fontSize: 12,
     color: CORES.textoSecundario,
   },
@@ -393,46 +429,46 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   percentualGeral: {
-    fontFamily: FONTE_MONO,
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontFamily: FONTES.monoExtraNegrito,
+    fontSize: 22,
     color: CORES.verde,
   },
   rotuloGeral: {
+    fontFamily: FONTES.regular,
     fontSize: 11,
     color: CORES.textoSecundario,
   },
   trilhoGeral: {
     height: 8,
     borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.07)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
     overflow: 'hidden',
   },
   preenchimentoGeral: {
     height: '100%',
     borderRadius: 999,
-    backgroundColor: CORES.verde,
   },
   disponivel: {
+    fontFamily: FONTES.regular,
     fontSize: 13,
     color: CORES.textoSecundario,
   },
   valorDisponivel: {
-    fontFamily: FONTE_MONO,
-    fontWeight: 'bold',
+    fontFamily: FONTES.monoNegrito,
     color: CORES.texto,
   },
   negativo: {
     color: CORES.vermelho,
   },
   erro: {
+    fontFamily: FONTES.regular,
     fontSize: 13,
     color: CORES.vermelho,
   },
   quantidade: {
-    fontSize: 15,
-    fontWeight: 'bold',
-    color: CORES.texto,
+    fontFamily: FONTES.seminegrito,
+    fontSize: 12,
+    color: CORES.textoSecundario,
   },
   vazio: {
     alignItems: 'center',
@@ -440,14 +476,16 @@ const styles = StyleSheet.create({
     paddingVertical: 48,
   },
   emojiVazio: {
+    fontFamily: FONTES.regular,
     fontSize: 44,
   },
   tituloVazio: {
+    fontFamily: FONTES.negrito,
     fontSize: 16,
-    fontWeight: 'bold',
     color: CORES.texto,
   },
   textoVazio: {
+    fontFamily: FONTES.regular,
     fontSize: 13,
     color: CORES.textoSecundario,
   },
@@ -459,12 +497,20 @@ const styles = StyleSheet.create({
     borderRadius: TAMANHO_FAB / 2,
     alignItems: 'center',
     justifyContent: 'center',
+    // O fundo sólido fica sob o degradê; sem ele o Android não desenha a sombra.
     backgroundColor: CORES.verde,
-    elevation: 6,
+    elevation: 8,
+    shadowColor: CORES.verde,
+  },
+  degradeFab: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: TAMANHO_FAB / 2,
+    overflow: 'hidden',
   },
   fabPressionado: {
     opacity: 0.85,
   },
+  snackbar: ESTILO_SNACKBAR,
 });
 
 export default CofresScreen;
