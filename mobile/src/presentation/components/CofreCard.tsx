@@ -1,5 +1,12 @@
 import React, {useState} from 'react';
-import {Pressable, StyleSheet, Text, View} from 'react-native';
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 import {IconButton, Menu} from 'react-native-paper';
 
 import {progressoCofre} from '../../domain/cofres';
@@ -15,6 +22,7 @@ interface Props {
   onRetirar: (cofre: Cofre) => void;
   onEditar: (cofre: Cofre) => void;
   onExcluir: (cofre: Cofre) => void;
+  style?: StyleProp<ViewStyle>;
 }
 
 function CofreCard({
@@ -24,6 +32,7 @@ function CofreCard({
   onRetirar,
   onEditar,
   onExcluir,
+  style,
 }: Props): React.JSX.Element {
   const [menuAberto, setMenuAberto] = useState(false);
   const progresso = progressoCofre(cofre.saldoCentavos, cofre.metaCentavos);
@@ -42,6 +51,7 @@ function CofreCard({
       testID={`cofre-card-${cofre.id}`}
       style={({pressed}) => [
         styles.card,
+        style,
         {borderColor: comAlfa(cofre.cor, 0.13)},
         pressed && styles.pressionado,
       ]}>
@@ -137,7 +147,6 @@ function CofreCard({
 
 const styles = StyleSheet.create({
   card: {
-    flex: 1,
     backgroundColor: CORES.superficie,
     borderRadius: 22,
     padding: 16,

@@ -367,14 +367,16 @@ const styles = StyleSheet.create({
   },
   conteudo: {
     paddingHorizontal: 20,
+    // Com o paddingBottom 8 do cabeçalho, dá 20 até o rótulo "ÍCONE".
+    paddingTop: 12,
     paddingBottom: 24,
     gap: 18,
   },
   rotulo: {
-    fontFamily: FONTES.regular,
-    fontSize: 12,
-    color: CORES.textoApagado,
-    letterSpacing: 1,
+    fontFamily: FONTES.seminegrito,
+    fontSize: 11,
+    color: CORES.textoSecundario,
+    letterSpacing: 0.7,
     marginBottom: 8,
   },
   grade: {

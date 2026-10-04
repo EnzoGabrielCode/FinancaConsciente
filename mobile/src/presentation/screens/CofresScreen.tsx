@@ -1,5 +1,13 @@
 import React, {useEffect, useState} from 'react';
-import {FlatList, Modal, Pressable, StyleSheet, Text, View} from 'react-native';
+import {
+  FlatList,
+  Modal,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import {Icon, Portal, Snackbar} from 'react-native-paper';
 import LinearGradient from 'react-native-linear-gradient';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
@@ -39,6 +47,8 @@ interface EstadoMovimento {
 }
 
 const TAMANHO_FAB = 56;
+const MARGEM_LISTA = 20;
+const GAP_GRADE = 12;
 
 export const textoQuantidade = (quantidade: number) =>
   `${quantidade} ${quantidade === 1 ? 'cofre' : 'cofres'}`;
@@ -50,6 +60,10 @@ function CofresScreen({
   onFechar,
 }: Props): React.JSX.Element {
   const insets = useSafeAreaInsets();
+  // Largura fixa de meia linha: com número ímpar de cofres o último card não
+  // estica até a largura toda.
+  const larguraCard =
+    (useWindowDimensions().width - MARGEM_LISTA * 2 - GAP_GRADE) / 2;
   const [form, setForm] = useState<EstadoForm>({visivel: false, cofre: null});
   const [movimento, setMovimento] = useState<EstadoMovimento>({
     cofreId: null,
@@ -206,7 +220,9 @@ function CofresScreen({
 
       {cofres.cofres.length > 0 && (
         <Text style={styles.quantidade} testID="cofres-quantidade">
-          {textoQuantidade(cofres.cofres.length)}
+          {cofres.cofres.length === 1
+            ? '1 cofre ativo'
+            : `${cofres.cofres.length} cofres ativos`}
         </Text>
       )}
     </View>
@@ -254,6 +270,7 @@ function CofresScreen({
             ListEmptyComponent={vazio}
             renderItem={({item}) => (
               <CofreCard
+                style={{width: larguraCard}}
                 cofre={item}
                 onPress={abrirMovimento('deposito')}
                 onGuardar={abrirMovimento('deposito')}
@@ -359,12 +376,12 @@ const styles = StyleSheet.create({
     width: 38,
   },
   lista: {
-    paddingHorizontal: 20,
+    paddingHorizontal: MARGEM_LISTA,
     paddingTop: 8,
     gap: 12,
   },
   linhaGrade: {
-    gap: 12,
+    gap: GAP_GRADE,
   },
   cabecalhoLista: {
     gap: 16,
@@ -449,9 +466,9 @@ const styles = StyleSheet.create({
     color: CORES.vermelho,
   },
   quantidade: {
-    fontFamily: FONTES.negrito,
-    fontSize: 15,
-    color: CORES.texto,
+    fontFamily: FONTES.seminegrito,
+    fontSize: 12,
+    color: CORES.textoSecundario,
   },
   vazio: {
     alignItems: 'center',
