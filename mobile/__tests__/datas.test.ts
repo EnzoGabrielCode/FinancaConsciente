@@ -2,6 +2,7 @@ import {describe, expect, it} from '@jest/globals';
 
 import {
   anoMesDe,
+  formatarDataAmigavel,
   mesesAte,
   rotuloMes,
   saudacao,
@@ -69,5 +70,40 @@ describe('saudacao', () => {
     expect(saudacao(as(17, 59))).toBe('Boa tarde');
     expect(saudacao(as(18, 0))).toBe('Boa noite');
     expect(saudacao(as(0, 0))).toBe('Boa noite');
+  });
+});
+
+describe('formatarDataAmigavel', () => {
+  const dia = (ano: number, mes: number, d: number) =>
+    new Date(ano, mes - 1, d, 15, 30);
+
+  it('diz "Hoje" para a data de hoje', () => {
+    expect(formatarDataAmigavel('2026-10-04', dia(2026, 10, 4))).toBe('Hoje');
+  });
+
+  it('diz "Ontem" para o dia anterior', () => {
+    expect(formatarDataAmigavel('2026-10-03', dia(2026, 10, 4))).toBe('Ontem');
+  });
+
+  it('reconhece ontem na virada do mês', () => {
+    expect(formatarDataAmigavel('2026-09-30', dia(2026, 10, 1))).toBe('Ontem');
+  });
+
+  it('reconhece ontem na virada do ano', () => {
+    expect(formatarDataAmigavel('2025-12-31', dia(2026, 1, 1))).toBe('Ontem');
+  });
+
+  it('mostra dd/mm para outras datas do ano atual', () => {
+    expect(formatarDataAmigavel('2026-09-28', dia(2026, 10, 4))).toBe('28/09');
+    expect(formatarDataAmigavel('2026-10-05', dia(2026, 10, 4))).toBe('05/10');
+  });
+
+  it('mostra dd/mm/aaaa para datas de outro ano', () => {
+    expect(formatarDataAmigavel('2025-12-30', dia(2026, 1, 1))).toBe(
+      '30/12/2025',
+    );
+    expect(formatarDataAmigavel('2027-01-02', dia(2026, 10, 4))).toBe(
+      '02/01/2027',
+    );
   });
 });

@@ -11,7 +11,7 @@ import {
 import {Icon} from 'react-native-paper';
 
 import {buscarCategoria, categoriasDo} from '../../domain/categorias';
-import {formatarDataCurta} from '../../domain/datas';
+import {formatarDataAmigavel} from '../../domain/datas';
 import {formatarCentavos} from '../../domain/dinheiro';
 import type {Transacao} from '../../domain/entities/Transacao';
 import {CORES, comAlfa, corDoTipo} from '../theme/cores';
@@ -134,7 +134,7 @@ function TransacaoItem({
             receita ? 'receita' : 'despesa'
           } de ${formatarCentavos(
             transacao.valorCentavos,
-          )}, ${formatarDataCurta(transacao.data)}${fixa ? ', fixa' : ''}${
+          )}, ${formatarDataAmigavel(transacao.data)}${fixa ? ', fixa' : ''}${
             transacao.comprovanteUri !== null ? ', tem comprovante' : ''
           }`}
           accessibilityHint="Toque para editar. Deslize para a esquerda para excluir."
@@ -155,7 +155,7 @@ function TransacaoItem({
             </Text>
             <View style={styles.linhaData}>
               <Text style={styles.data}>
-                {formatarDataCurta(transacao.data)}
+                {formatarDataAmigavel(transacao.data)}
               </Text>
               {transacao.comprovanteUri !== null && (
                 <View
