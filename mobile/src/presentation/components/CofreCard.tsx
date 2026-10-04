@@ -40,7 +40,11 @@ function CofreCard({
       accessibilityRole="button"
       accessibilityLabel={`Cofre ${cofre.nome}: ${saldo} guardados`}
       testID={`cofre-card-${cofre.id}`}
-      style={({pressed}) => [styles.card, pressed && styles.pressionado]}>
+      style={({pressed}) => [
+        styles.card,
+        {borderColor: comAlfa(cofre.cor, 0.13)},
+        pressed && styles.pressionado,
+      ]}>
       <View style={styles.topo}>
         <View
           style={[styles.icone, {backgroundColor: comAlfa(cofre.cor, 0.12)}]}>
@@ -137,6 +141,7 @@ const styles = StyleSheet.create({
     backgroundColor: CORES.superficie,
     borderRadius: 22,
     padding: 16,
+    borderWidth: 1,
     gap: 6,
   },
   pressionado: {

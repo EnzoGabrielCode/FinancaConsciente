@@ -350,8 +350,9 @@ const styles = StyleSheet.create({
   titulo: {
     flex: 1,
     textAlign: 'center',
-    fontFamily: FONTES.negrito,
+    fontFamily: FONTES.extraNegrito,
     fontSize: 18,
+    letterSpacing: -0.2,
     color: CORES.texto,
   },
   espacoCabecalho: {
@@ -387,13 +388,14 @@ const styles = StyleSheet.create({
   },
   rotuloTotal: {
     fontFamily: FONTES.regular,
-    fontSize: 12,
-    letterSpacing: 1.2,
+    fontSize: 11,
+    letterSpacing: 0.7,
     color: CORES.textoSecundario,
   },
   valorTotal: {
-    fontFamily: FONTES.monoNegrito,
+    fontFamily: FONTES.monoExtraNegrito,
     fontSize: 32,
+    letterSpacing: -1,
   },
   moedaTotal: {
     color: CORES.texto,
@@ -410,8 +412,8 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   percentualGeral: {
-    fontFamily: FONTES.monoNegrito,
-    fontSize: 20,
+    fontFamily: FONTES.monoExtraNegrito,
+    fontSize: 22,
     color: CORES.verde,
   },
   rotuloGeral: {
