@@ -81,15 +81,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: CORES.realce,
+    borderWidth: 1,
+    borderColor: CORES.realceForte,
   },
   teclaApagar: {
     backgroundColor: comAlfa(CORES.vermelho, 0.1),
+    borderColor: comAlfa(CORES.vermelho, 0.2),
   },
   teclaPressionada: {
     opacity: 0.6,
   },
   textoTecla: {
-    fontFamily: FONTES.mono,
+    fontFamily: FONTES.monoMedio,
     fontSize: 20,
     color: CORES.texto,
   },

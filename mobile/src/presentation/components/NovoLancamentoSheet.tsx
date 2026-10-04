@@ -417,8 +417,8 @@ function NovoLancamentoSheet({
                         style={[
                           styles.categoria,
                           selecionada && {
-                            backgroundColor: comAlfa(item.cor, 0.12),
-                            borderColor: comAlfa(item.cor, 0.12),
+                            backgroundColor: comAlfa(item.cor, 0.125),
+                            borderColor: comAlfa(item.cor, 0.375),
                           },
                         ]}>
                         <Icon
@@ -663,14 +663,19 @@ const styles = StyleSheet.create({
     backgroundColor: CORES.superficie,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
+    borderTopWidth: 1,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    elevation: 16,
   },
   alca: {
     alignSelf: 'center',
     width: 36,
     height: 4,
     borderRadius: 2,
-    marginTop: 12,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    marginTop: 10,
+    backgroundColor: 'rgba(255,255,255,0.15)',
   },
   cabecalho: {
     flexDirection: 'row',
@@ -700,20 +705,20 @@ const styles = StyleSheet.create({
   },
   seletorTipo: {
     flexDirection: 'row',
-    padding: 4,
+    padding: 3,
     borderRadius: 12,
     backgroundColor: CORES.realce,
   },
   opcaoTipo: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: 8,
     borderRadius: 10,
   },
   textoTipo: {
     fontFamily: FONTES.seminegrito,
-    fontSize: 14,
-    color: CORES.textoSecundario,
+    fontSize: 13,
+    color: CORES.textoApagado,
   },
   rotulo: {
     fontFamily: FONTES.regular,
@@ -743,14 +748,15 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(100,181,246,0.25)',
   },
   moeda: {
-    fontFamily: FONTES.regular,
+    fontFamily: FONTES.monoMedio,
     fontSize: 14,
     color: CORES.textoSecundario,
   },
   valor: {
     flexShrink: 1,
-    fontFamily: FONTES.monoNegrito,
+    fontFamily: FONTES.monoExtraNegrito,
     fontSize: 44,
+    letterSpacing: -0.9,
   },
   linhaChips: {
     flexDirection: 'row',
@@ -758,9 +764,10 @@ const styles = StyleSheet.create({
   },
   rotuloSecao: {
     fontFamily: FONTES.regular,
-    fontSize: 14,
+    fontSize: 12,
+    letterSpacing: 0.5,
     color: CORES.textoSecundario,
-    marginBottom: 8,
+    marginBottom: 10,
   },
   linhaCategorias: {
     gap: 8,
@@ -773,11 +780,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'transparent',
+    borderColor: 'rgba(255,255,255,0.08)',
     backgroundColor: CORES.realce,
   },
   textoCategoria: {
-    fontFamily: FONTES.regular,
+    fontFamily: FONTES.medio,
     fontSize: 10,
     color: CORES.textoSecundario,
   },
