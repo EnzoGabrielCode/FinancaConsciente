@@ -1,9 +1,11 @@
 import React from 'react';
 import {StyleSheet, Text, View} from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 
 import {formatarCentavos} from '../../domain/dinheiro';
 import type {ResumoDashboard} from '../../domain/entities/Dashboard';
 import {CORES, comAlfa} from '../theme/cores';
+import {DEGRADES, DIAGONAL} from '../theme/degrades';
 import {FONTES} from '../theme/fontes';
 import GraficoMensal from './GraficoMensal';
 
@@ -75,7 +77,11 @@ function CardSaldo({resumo, quantidadeCofres}: Props): React.JSX.Element {
   const corSaldo = resumo.disponivelCentavos < 0 ? CORES.vermelho : CORES.verde;
 
   return (
-    <View style={styles.card} testID="card-saldo">
+    <LinearGradient
+      colors={DEGRADES.cardSaldo}
+      {...DIAGONAL}
+      style={styles.card}
+      testID="card-saldo">
       <Text style={styles.titulo}>SALDO ATUAL</Text>
 
       <Text
@@ -119,15 +125,16 @@ function CardSaldo({resumo, quantidadeCofres}: Props): React.JSX.Element {
 
       <GraficoMensal serie={resumo.serie} />
       <Text style={styles.legenda}>Últimos {resumo.serie.length} meses</Text>
-    </View>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: CORES.superficie,
     borderRadius: 24,
-    padding: 20,
+    paddingTop: 20,
+    paddingHorizontal: 20,
+    paddingBottom: 16,
     borderWidth: 1,
     borderColor: comAlfa(CORES.verde, 0.12),
     elevation: 2,

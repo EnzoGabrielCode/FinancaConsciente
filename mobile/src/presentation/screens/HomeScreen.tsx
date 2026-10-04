@@ -16,6 +16,7 @@ import {
   Text,
   useTheme,
 } from 'react-native-paper';
+import LinearGradient from 'react-native-linear-gradient';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
 import {DATABASE_NAME} from '../../data/database/connection';
@@ -35,6 +36,7 @@ import {useDatabase} from '../hooks/useDatabase';
 import {useTransacoes} from '../hooks/useTransacoes';
 import type {SeletorImagem} from '../servicos/seletorImagem';
 import {CORES} from '../theme/cores';
+import {DEGRADES, DIAGONAL} from '../theme/degrades';
 import {FONTES} from '../theme/fontes';
 import {ESTILO_SNACKBAR, TEMA_SNACKBAR} from '../theme';
 import {mensagemDeErro} from '../utils/mensagemDeErro';
@@ -332,6 +334,11 @@ function HomeScreen({
           accessibilityLabel="Novo lançamento"
           testID="botao-novo-lancamento"
           style={({pressed}) => [styles.fab, pressed && styles.fabPressionado]}>
+          <LinearGradient
+            colors={DEGRADES.verde}
+            {...DIAGONAL}
+            style={styles.degradeFab}
+          />
           <Icon source="plus" size={28} color={CORES.fundo} />
         </Pressable>
       </View>
@@ -472,8 +479,15 @@ const styles = StyleSheet.create({
     borderRadius: TAMANHO_FAB / 2,
     alignItems: 'center',
     justifyContent: 'center',
+    // O fundo sólido fica sob o degradê; sem ele o Android não desenha a sombra.
     backgroundColor: CORES.verde,
-    elevation: 6,
+    elevation: 8,
+    shadowColor: CORES.verde,
+  },
+  degradeFab: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: TAMANHO_FAB / 2,
+    overflow: 'hidden',
   },
   fabPressionado: {
     opacity: 0.85,

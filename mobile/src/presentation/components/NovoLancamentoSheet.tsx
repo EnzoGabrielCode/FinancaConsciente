@@ -9,6 +9,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 import {
   Button,
   Chip,
@@ -46,6 +47,7 @@ import {
   type SeletorImagem,
 } from '../servicos/seletorImagem';
 import {CORES, comAlfa, corDoTipo} from '../theme/cores';
+import {DEGRADES, DIAGONAL} from '../theme/degrades';
 import {FONTES} from '../theme/fontes';
 import {mensagemDeErro} from '../utils/mensagemDeErro';
 import AlertaDuplicataDialog from './AlertaDuplicataDialog';
@@ -547,9 +549,22 @@ function NovoLancamentoSheet({
                 style={[
                   styles.botaoSalvar,
                   temValor
-                    ? {backgroundColor: corTipo}
+                    ? [
+                        styles.botaoSalvarAtivo,
+                        // Fundo sólido sob o degradê para o Android desenhar a sombra.
+                        {backgroundColor: corTipo, shadowColor: corTipo},
+                      ]
                     : styles.botaoSalvarDesabilitado,
                 ]}>
+                {temValor && (
+                  <LinearGradient
+                    colors={
+                      tipo === 'receita' ? DEGRADES.verde : DEGRADES.vermelho
+                    }
+                    {...DIAGONAL}
+                    style={styles.degradeBotao}
+                  />
+                )}
                 {salvando ? (
                   <ActivityIndicator color={CORES.fundo} />
                 ) : (
@@ -806,17 +821,25 @@ const styles = StyleSheet.create({
     right: 16,
   },
   botaoSalvar: {
-    height: 52,
     borderRadius: 18,
+    paddingVertical: 16,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  botaoSalvarAtivo: {
+    elevation: 6,
+  },
+  degradeBotao: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 18,
+    overflow: 'hidden',
   },
   botaoSalvarDesabilitado: {
     backgroundColor: CORES.realceForte,
   },
   textoSalvar: {
-    fontFamily: FONTES.negrito,
-    fontSize: 16,
+    fontFamily: FONTES.extraNegrito,
+    fontSize: 15,
     color: CORES.fundo,
   },
   textoSalvarDesabilitado: {

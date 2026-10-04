@@ -456,8 +456,8 @@ const styles = StyleSheet.create({
     color: CORES.textoSecundario,
   },
   botaoSalvar: {
-    height: 52,
     borderRadius: 18,
+    paddingVertical: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -465,8 +465,8 @@ const styles = StyleSheet.create({
     backgroundColor: CORES.realceForte,
   },
   textoSalvar: {
-    fontFamily: FONTES.negrito,
-    fontSize: 16,
+    fontFamily: FONTES.extraNegrito,
+    fontSize: 15,
     color: CORES.fundo,
   },
   textoSalvarDesabilitado: {

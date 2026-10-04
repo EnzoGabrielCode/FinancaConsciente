@@ -8,6 +8,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 import {HelperText, Icon} from 'react-native-paper';
 
 import {formatarDataCurta} from '../../domain/datas';
@@ -22,6 +23,7 @@ import type {
   TipoMovimento,
 } from '../../domain/entities/Cofre';
 import {CORES, comAlfa} from '../theme/cores';
+import {DEGRADES, DIAGONAL} from '../theme/degrades';
 import {FONTES} from '../theme/fontes';
 import {mensagemDeErro} from '../utils/mensagemDeErro';
 import TecladoNumerico from './TecladoNumerico';
@@ -251,8 +253,21 @@ function MovimentarCofreSheet({
               testID="movimentar-confirmar"
               style={[
                 styles.botao,
-                temValor ? {backgroundColor: cor} : styles.botaoDesabilitado,
+                temValor
+                  ? [
+                      styles.botaoAtivo,
+                      // Fundo sólido sob o degradê para o Android desenhar a sombra.
+                      {backgroundColor: cor, shadowColor: cor},
+                    ]
+                  : styles.botaoDesabilitado,
               ]}>
+              {temValor && (
+                <LinearGradient
+                  colors={guardando ? DEGRADES.verde : DEGRADES.laranja}
+                  {...DIAGONAL}
+                  style={styles.degradeBotao}
+                />
+              )}
               {salvando ? (
                 <ActivityIndicator color={CORES.fundo} />
               ) : (
@@ -404,17 +419,25 @@ const styles = StyleSheet.create({
     fontSize: 44,
   },
   botao: {
-    height: 52,
     borderRadius: 18,
+    paddingVertical: 16,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  botaoAtivo: {
+    elevation: 6,
+  },
+  degradeBotao: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 18,
+    overflow: 'hidden',
   },
   botaoDesabilitado: {
     backgroundColor: CORES.realceForte,
   },
   textoBotao: {
-    fontFamily: FONTES.negrito,
-    fontSize: 16,
+    fontFamily: FONTES.extraNegrito,
+    fontSize: 15,
     color: CORES.fundo,
   },
   textoBotaoDesabilitado: {

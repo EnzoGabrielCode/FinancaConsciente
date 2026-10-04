@@ -1,6 +1,7 @@
 import React, {useEffect, useState} from 'react';
 import {FlatList, Modal, Pressable, StyleSheet, Text, View} from 'react-native';
 import {Icon, Portal, Snackbar} from 'react-native-paper';
+import LinearGradient from 'react-native-linear-gradient';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
 import {formatarCentavos, formatarPercentual} from '../../domain/dinheiro';
@@ -15,6 +16,7 @@ import ConfirmarExclusaoDialog from '../components/ConfirmarExclusaoDialog';
 import MovimentarCofreSheet from '../components/MovimentarCofreSheet';
 import type {UseCofres} from '../hooks/useCofres';
 import {CORES} from '../theme/cores';
+import {DEGRADES, DIAGONAL, HORIZONTAL} from '../theme/degrades';
 import {FONTES} from '../theme/fontes';
 import {ESTILO_SNACKBAR, TEMA_SNACKBAR} from '../theme';
 import {mensagemDeErro} from '../utils/mensagemDeErro';
@@ -127,7 +129,11 @@ function CofresScreen({
 
   const cabecalhoLista = (
     <View style={styles.cabecalhoLista}>
-      <View style={styles.cardTotal} testID="cofres-total">
+      <LinearGradient
+        colors={DEGRADES.cardTotal}
+        {...DIAGONAL}
+        style={styles.cardTotal}
+        testID="cofres-total">
         <View style={styles.linhaTotal}>
           <View style={styles.colunaTotal}>
             <Text style={styles.rotuloTotal}>TOTAL GUARDADO</Text>
@@ -170,7 +176,9 @@ function CofresScreen({
         </View>
         {resumo.progressoGeral !== null && (
           <View style={styles.trilhoGeral}>
-            <View
+            <LinearGradient
+              colors={DEGRADES.progresso}
+              {...HORIZONTAL}
               style={[
                 styles.preenchimentoGeral,
                 {width: `${resumo.progressoGeral * 100}%`},
@@ -188,7 +196,7 @@ function CofresScreen({
             {formatarCentavos(disponivelCentavos)}
           </Text>
         </Text>
-      </View>
+      </LinearGradient>
 
       {cofres.erro && (
         <Text style={styles.erro} testID="cofres-erro">
@@ -267,6 +275,11 @@ function CofresScreen({
               {bottom: insets.bottom + 24},
               pressed && styles.fabPressionado,
             ]}>
+            <LinearGradient
+              colors={DEGRADES.verde}
+              {...DIAGONAL}
+              style={styles.degradeFab}
+            />
             <Icon source="plus" size={28} color={CORES.fundo} />
           </Pressable>
 
@@ -357,7 +370,6 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   cardTotal: {
-    backgroundColor: CORES.superficie,
     borderRadius: 22,
     padding: 20,
     borderWidth: 1,
@@ -410,13 +422,12 @@ const styles = StyleSheet.create({
   trilhoGeral: {
     height: 8,
     borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.07)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
     overflow: 'hidden',
   },
   preenchimentoGeral: {
     height: '100%',
     borderRadius: 999,
-    backgroundColor: CORES.verde,
   },
   disponivel: {
     fontFamily: FONTES.regular,
@@ -467,8 +478,15 @@ const styles = StyleSheet.create({
     borderRadius: TAMANHO_FAB / 2,
     alignItems: 'center',
     justifyContent: 'center',
+    // O fundo sólido fica sob o degradê; sem ele o Android não desenha a sombra.
     backgroundColor: CORES.verde,
-    elevation: 6,
+    elevation: 8,
+    shadowColor: CORES.verde,
+  },
+  degradeFab: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: TAMANHO_FAB / 2,
+    overflow: 'hidden',
   },
   fabPressionado: {
     opacity: 0.85,
