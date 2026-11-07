@@ -6,20 +6,41 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
 import {anoMesDe, hojeISO, nomeMesAno} from '../../domain/datas';
 import {formatarCentavos} from '../../domain/dinheiro';
+import type {
+  ContaRecorrente,
+  DadosContaRecorrente,
+} from '../../domain/entities/ContaRecorrente';
 import type {DadosOrcamento, Orcamento} from '../../domain/entities/Orcamento';
 import {situacaoDo} from '../../domain/orcamentos';
+import {textoContasLancadas} from '../../domain/recorrencia';
+import ContaRecorrenteFormSheet from '../components/ContaRecorrenteFormSheet';
+import ContasFixasConteudo from '../components/ContasFixasConteudo';
 import OrcamentoCard, {DEGRADE_SITUACAO} from '../components/OrcamentoCard';
 import OrcamentoFormSheet from '../components/OrcamentoFormSheet';
+import type {UseContasRecorrentes} from '../hooks/useContasRecorrentes';
 import type {UseOrcamentos} from '../hooks/useOrcamentos';
 import {CORES, comAlfa} from '../theme/cores';
-import {HORIZONTAL} from '../theme/degrades';
+import {DEGRADES, DIAGONAL, HORIZONTAL} from '../theme/degrades';
 import {FONTES} from '../theme/fontes';
 import {ESTILO_SNACKBAR, TEMA_SNACKBAR} from '../theme';
 
 interface Props {
   visivel: boolean;
   orcamentos: UseOrcamentos;
+  contas: UseContasRecorrentes;
   onFechar: () => void;
+}
+
+type AbaPlanejamento = 'orcamentos' | 'contas';
+
+const ABAS: {id: AbaPlanejamento; rotulo: string}[] = [
+  {id: 'orcamentos', rotulo: 'Orçamentos'},
+  {id: 'contas', rotulo: 'Contas fixas'},
+];
+
+interface EstadoFormConta {
+  visivel: boolean;
+  conta: ContaRecorrente | null;
 }
 
 interface EstadoForm {
@@ -39,6 +60,7 @@ const textoDias = (dias: number) =>
 function OrcamentosScreen({
   visivel,
   orcamentos,
+  contas,
   onFechar,
 }: Props): React.JSX.Element {
   const insets = useSafeAreaInsets();
@@ -46,22 +68,35 @@ function OrcamentosScreen({
     visivel: false,
     orcamento: null,
   });
+  const [formConta, setFormConta] = useState<EstadoFormConta>({
+    visivel: false,
+    conta: null,
+  });
+  const [aba, setAba] = useState<AbaPlanejamento>('orcamentos');
   const [aviso, setAviso] = useState<string | null>(null);
 
   useEffect(() => {
     if (!visivel) {
       setForm(atual => ({...atual, visivel: false}));
+      setFormConta(atual => ({...atual, visivel: false}));
     }
   }, [visivel]);
 
   const {progressos, resumo, categoriasLivres} = orcamentos;
-  const semCategoriasLivres = categoriasLivres.length === 0;
+  const naoPodeAdicionar =
+    aba === 'orcamentos' && categoriasLivres.length === 0;
   const estourouTotal = resumo.disponivel < 0;
 
   const abrirNovo = () => setForm({visivel: true, orcamento: null});
   const abrirEdicao = (orcamento: Orcamento) =>
     setForm({visivel: true, orcamento});
   const fecharForm = () => setForm(atual => ({...atual, visivel: false}));
+  const abrirEdicaoConta = (conta: ContaRecorrente) =>
+    setFormConta({visivel: true, conta});
+  const fecharFormConta = () =>
+    setFormConta(atual => ({...atual, visivel: false}));
+  const adicionar = () =>
+    aba === 'contas' ? setFormConta({visivel: true, conta: null}) : abrirNovo();
 
   const salvar = async (dados: DadosOrcamento) => {
     const primeiro = progressos.length === 0;
@@ -77,6 +112,29 @@ function OrcamentosScreen({
     await orcamentos.excluir(id);
     fecharForm();
     setAviso('Orçamento excluído');
+  };
+
+  const salvarConta = async (dados: DadosContaRecorrente) => {
+    const primeira = contas.contas.length === 0;
+    const emEdicao = formConta.conta;
+    const lancadas = await contas.salvar(dados, emEdicao?.id);
+    fecharFormConta();
+    setAviso(
+      lancadas > 0
+        ? textoContasLancadas(lancadas)
+        : emEdicao
+        ? 'Conta atualizada'
+        : 'Conta criada',
+    );
+    if (primeira && !(await contas.pedirPermissao())) {
+      setAviso(AVISO_PERMISSAO);
+    }
+  };
+
+  const excluirConta = async (id: number) => {
+    await contas.excluir(id);
+    fecharFormConta();
+    setAviso('Conta excluída');
   };
 
   const cabecalhoLista = (
@@ -211,37 +269,79 @@ function OrcamentosScreen({
               <Text style={styles.mes} testID="orcamentos-mes">
                 {nomeMesAno(anoMesDe(hojeISO()))}
               </Text>
-              <Text style={styles.titulo}>Orçamentos</Text>
+              <Text style={styles.titulo}>Planejamento</Text>
             </View>
             <Pressable
-              onPress={abrirNovo}
-              disabled={semCategoriasLivres}
+              onPress={adicionar}
+              disabled={naoPodeAdicionar}
               accessibilityRole="button"
-              accessibilityLabel="Adicionar orçamento"
-              accessibilityState={{disabled: semCategoriasLivres}}
+              accessibilityLabel={
+                aba === 'contas' ? 'Adicionar conta' : 'Adicionar orçamento'
+              }
+              accessibilityState={{disabled: naoPodeAdicionar}}
               testID="orcamentos-adicionar"
               style={[
                 styles.botaoAdicionar,
-                semCategoriasLivres && styles.botaoDesabilitado,
+                naoPodeAdicionar && styles.botaoDesabilitado,
               ]}>
               <Text style={styles.textoAdicionar}>+ Adicionar</Text>
             </Pressable>
           </View>
 
-          <FlatList
-            data={progressos}
-            keyExtractor={progresso => String(progresso.orcamento.id)}
-            contentContainerStyle={[
-              styles.lista,
-              {paddingBottom: insets.bottom + 24},
-            ]}
-            ListHeaderComponent={cabecalhoLista}
-            ListEmptyComponent={vazio}
-            renderItem={({item}) => (
-              <OrcamentoCard progresso={item} onPress={abrirEdicao} />
-            )}
-            testID="orcamentos-lista"
-          />
+          <View style={styles.seletor} accessibilityRole="tablist">
+            {ABAS.map(({id, rotulo}) => {
+              const ativa = aba === id;
+              return (
+                <Pressable
+                  key={id}
+                  onPress={() => setAba(id)}
+                  accessibilityRole="tab"
+                  accessibilityState={{selected: ativa}}
+                  accessibilityLabel={rotulo}
+                  testID={`planejamento-aba-${id}`}
+                  style={styles.opcaoSeletor}>
+                  {ativa && (
+                    <LinearGradient
+                      colors={DEGRADES.verde}
+                      {...DIAGONAL}
+                      style={styles.degradeSeletor}
+                    />
+                  )}
+                  <Text
+                    style={[
+                      styles.textoSeletor,
+                      ativa && styles.textoSeletorAtivo,
+                    ]}>
+                    {rotulo}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          {aba === 'orcamentos' ? (
+            <FlatList
+              data={progressos}
+              keyExtractor={progresso => String(progresso.orcamento.id)}
+              contentContainerStyle={[
+                styles.lista,
+                {paddingBottom: insets.bottom + 24},
+              ]}
+              ListHeaderComponent={cabecalhoLista}
+              ListEmptyComponent={vazio}
+              renderItem={({item}) => (
+                <OrcamentoCard progresso={item} onPress={abrirEdicao} />
+              )}
+              testID="orcamentos-lista"
+            />
+          ) : (
+            <ContasFixasConteudo
+              contas={contas}
+              margemInferior={insets.bottom + 24}
+              onEditar={abrirEdicaoConta}
+              onAviso={setAviso}
+            />
+          )}
 
           <Snackbar
             visible={aviso !== null}
@@ -262,6 +362,14 @@ function OrcamentosScreen({
         onFechar={fecharForm}
         onSalvar={salvar}
         onExcluir={excluir}
+      />
+
+      <ContaRecorrenteFormSheet
+        visivel={formConta.visivel}
+        conta={formConta.conta}
+        onFechar={fecharFormConta}
+        onSalvar={salvarConta}
+        onExcluir={excluirConta}
       />
     </Modal>
   );
@@ -316,6 +424,33 @@ const styles = StyleSheet.create({
     fontFamily: FONTES.seminegrito,
     fontSize: 12,
     color: CORES.verde,
+  },
+  seletor: {
+    flexDirection: 'row',
+    gap: 4,
+    marginHorizontal: 20,
+    marginBottom: 4,
+    padding: 4,
+    borderRadius: 14,
+    backgroundColor: CORES.superficie,
+  },
+  opcaoSeletor: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 9,
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
+  degradeSeletor: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  textoSeletor: {
+    fontFamily: FONTES.seminegrito,
+    fontSize: 13,
+    color: CORES.textoSecundario,
+  },
+  textoSeletorAtivo: {
+    color: CORES.fundo,
   },
   lista: {
     paddingHorizontal: 20,

@@ -240,10 +240,6 @@ describe('migração v7: prazo das metas', () => {
       ['Viagem', '✈️', '#64B5F6', 800000, prazo],
     );
 
-  it('é a versão mais recente', () => {
-    expect(LATEST_VERSION).toBe(7);
-  });
-
   it('um cofre antigo continua com prazo NULL', async () => {
     const db = criarBancoReal();
     await runMigrations(db, MIGRATIONS.slice(0, 6));
@@ -252,7 +248,7 @@ describe('migração v7: prazo das metas', () => {
       ['Antigo', '💰', '#39FF84', 1000],
     );
 
-    await expect(runMigrations(db)).resolves.toBe(7);
+    await expect(runMigrations(db, MIGRATIONS.slice(0, 7))).resolves.toBe(7);
 
     const [resultado] = await db.executeSql(
       'SELECT nome, meta_centavos, prazo FROM cofres',
@@ -279,4 +275,131 @@ describe('migração v7: prazo das metas', () => {
       await expect(inserirCofre(db, prazo)).rejects.toThrow(/CHECK/);
     },
   );
+});
+
+describe('migração v8: contas recorrentes', () => {
+  const inserirConta = (
+    db: SQLiteDatabase,
+    frequencia = 'mensal',
+    mes: number | null = null,
+  ) =>
+    db.executeSql(
+      `INSERT INTO contas_recorrentes
+        (descricao, valor_centavos, categoria, frequencia, dia, mes, proxima)
+        VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      ['Internet', 9990, 'outros', frequencia, 10, mes, '2026-12-10'],
+    );
+
+  const inserirTransacao = (
+    db: SQLiteDatabase,
+    contaId: number | null,
+    data = '2026-12-10',
+  ) =>
+    db.executeSql(
+      `INSERT INTO transacoes
+        (tipo, descricao, valor_centavos, data, categoria, conta_recorrente_id)
+        VALUES ('despesa', 'Internet', 9990, ?, 'outros', ?)`,
+      [data, contaId],
+    );
+
+  async function bancoMigrado() {
+    const db = criarBancoReal();
+    await runMigrations(db);
+    return db;
+  }
+
+  it('é a versão mais recente', () => {
+    expect(LATEST_VERSION).toBe(8);
+  });
+
+  it('cria a tabela com os padrões e a coluna nova nas transações', async () => {
+    const db = await bancoMigrado();
+    await inserirConta(db);
+    await inserirTransacao(db, 1);
+
+    const [conta] = await db.executeSql(
+      'SELECT lembrar_dias_antes, ativa, criado_em FROM contas_recorrentes',
+    );
+    expect(conta.rows.item(0)).toMatchObject({
+      lembrar_dias_antes: 2,
+      ativa: 1,
+    });
+    expect(conta.rows.item(0).criado_em).toMatch(
+      /^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/,
+    );
+
+    const [transacao] = await db.executeSql(
+      'SELECT conta_recorrente_id FROM transacoes',
+    );
+    expect(transacao.rows.item(0).conta_recorrente_id).toBe(1);
+  });
+
+  it('migra um banco com transações, que ficam sem vínculo', async () => {
+    const db = criarBancoReal();
+    await runMigrations(db, MIGRATIONS.slice(0, 7));
+    await db.executeSql(
+      `INSERT INTO transacoes (tipo, descricao, valor_centavos, data)
+        VALUES ('despesa', 'Antiga', 100, '2026-01-01')`,
+    );
+
+    await runMigrations(db);
+
+    const [resultado] = await db.executeSql(
+      'SELECT conta_recorrente_id FROM transacoes',
+    );
+    expect(resultado.rows.item(0).conta_recorrente_id).toBeNull();
+  });
+
+  it('o índice único impede a mesma conta na mesma data', async () => {
+    const db = await bancoMigrado();
+    await inserirConta(db);
+    await inserirTransacao(db, 1);
+
+    await expect(inserirTransacao(db, 1)).rejects.toThrow(/UNIQUE/);
+    await expect(inserirTransacao(db, 1, '2027-01-10')).resolves.toBeDefined();
+  });
+
+  it('o índice não afeta lançamentos sem conta', async () => {
+    const db = await bancoMigrado();
+    await inserirTransacao(db, null);
+    await expect(inserirTransacao(db, null)).resolves.toBeDefined();
+  });
+
+  it('excluir a conta mantém as transações com vínculo NULL', async () => {
+    const db = await bancoMigrado();
+    await inserirConta(db);
+    await inserirTransacao(db, 1);
+
+    await db.executeSql('DELETE FROM contas_recorrentes WHERE id = ?', [1]);
+
+    const [resultado] = await db.executeSql(
+      'SELECT descricao, conta_recorrente_id FROM transacoes',
+    );
+    expect(resultado.rows.item(0)).toMatchObject({
+      descricao: 'Internet',
+      conta_recorrente_id: null,
+    });
+  });
+
+  it('exige o mês só na conta anual', async () => {
+    const db = await bancoMigrado();
+    await expect(inserirConta(db, 'anual', null)).rejects.toThrow(/CHECK/);
+    await expect(inserirConta(db, 'mensal', 3)).rejects.toThrow(/CHECK/);
+    await expect(inserirConta(db, 'anual', 13)).rejects.toThrow(/CHECK/);
+    await expect(inserirConta(db, 'anual', 3)).resolves.toBeDefined();
+  });
+
+  it('rejeita lembrete fora da lista e dia inválido', async () => {
+    const db = await bancoMigrado();
+    const inserir = (dia: number, lembrete: number) =>
+      db.executeSql(
+        `INSERT INTO contas_recorrentes
+          (descricao, valor_centavos, categoria, frequencia, dia,
+           lembrar_dias_antes, proxima)
+          VALUES ('Conta', 100, 'outros', 'mensal', ?, ?, '2026-12-10')`,
+        [dia, lembrete],
+      );
+    await expect(inserir(10, 4)).rejects.toThrow(/CHECK/);
+    await expect(inserir(32, 2)).rejects.toThrow(/CHECK/);
+  });
 });

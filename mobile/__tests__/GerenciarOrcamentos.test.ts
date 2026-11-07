@@ -58,7 +58,12 @@ describe('GerenciarOrcamentos', () => {
     gerenciar = new GerenciarOrcamentos(
       orcamentos,
       {gastosPorCategoria} as unknown as TransacaoRepository,
-      {notificar, pedirPermissao},
+      {
+        notificar,
+        pedirPermissao,
+        agendar: async () => {},
+        cancelarComPrefixo: async () => {},
+      },
     );
   });
 

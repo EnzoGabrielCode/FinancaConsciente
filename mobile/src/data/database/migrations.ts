@@ -102,6 +102,32 @@ export const MIGRATIONS: Migration[] = [
         CHECK (prazo IS NULL OR prazo GLOB '[0-9][0-9][0-9][0-9]-[01][0-9]')`,
     ],
   },
+  {
+    version: 8,
+    description: 'Cria contas recorrentes',
+    statements: [
+      `CREATE TABLE IF NOT EXISTS contas_recorrentes (
+        id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+        descricao          TEXT    NOT NULL CHECK (length(trim(descricao)) BETWEEN 1 AND 40),
+        valor_centavos     INTEGER NOT NULL
+                                   CHECK (typeof(valor_centavos) = 'integer' AND valor_centavos > 0),
+        categoria          TEXT    NOT NULL,
+        frequencia         TEXT    NOT NULL CHECK (frequencia IN ('mensal', 'anual')),
+        dia                INTEGER NOT NULL CHECK (dia BETWEEN 1 AND 31),
+        mes                INTEGER CHECK (mes IS NULL OR mes BETWEEN 1 AND 12),
+        lembrar_dias_antes INTEGER NOT NULL DEFAULT 2
+                                   CHECK (lembrar_dias_antes IN (0, 1, 2, 3, 5, 7)),
+        ativa              INTEGER NOT NULL DEFAULT 1 CHECK (ativa IN (0, 1)),
+        proxima            TEXT    NOT NULL,
+        criado_em          TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+        CHECK ((frequencia = 'anual') = (mes IS NOT NULL))
+      )`,
+      `ALTER TABLE transacoes ADD COLUMN conta_recorrente_id INTEGER
+        REFERENCES contas_recorrentes(id) ON DELETE SET NULL`,
+      `CREATE UNIQUE INDEX IF NOT EXISTS idx_transacoes_conta_data ON transacoes
+        (conta_recorrente_id, data) WHERE conta_recorrente_id IS NOT NULL`,
+    ],
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

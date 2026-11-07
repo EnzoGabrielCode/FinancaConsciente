@@ -1,5 +1,6 @@
-import React, {useCallback, useMemo, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {
+  AppState,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -21,11 +22,14 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
 import {DATABASE_NAME} from '../../data/database/connection';
 import {GerenciarCofres} from '../../domain/casosDeUso/GerenciarCofres';
+import {GerenciarContasRecorrentes} from '../../domain/casosDeUso/GerenciarContasRecorrentes';
 import {GerenciarOrcamentos} from '../../domain/casosDeUso/GerenciarOrcamentos';
 import {hojeISO, saudacao} from '../../domain/datas';
 import type {DadosTransacao, Transacao} from '../../domain/entities/Transacao';
+import {textoContasLancadas} from '../../domain/recorrencia';
 import type {ArmazenamentoComprovantes} from '../../domain/repositories/ArmazenamentoComprovantes';
 import type {CofreRepository} from '../../domain/repositories/CofreRepository';
+import type {ContaRecorrenteRepository} from '../../domain/repositories/ContaRecorrenteRepository';
 import type {Notificador} from '../../domain/repositories/Notificador';
 import type {OrcamentoRepository} from '../../domain/repositories/OrcamentoRepository';
 import type {TransacaoRepository} from '../../domain/repositories/TransacaoRepository';
@@ -35,6 +39,7 @@ import ConfirmarExclusaoDialog from '../components/ConfirmarExclusaoDialog';
 import NovoLancamentoSheet from '../components/NovoLancamentoSheet';
 import TransacaoItem from '../components/TransacaoItem';
 import {useCofres} from '../hooks/useCofres';
+import {useContasRecorrentes} from '../hooks/useContasRecorrentes';
 import {useDatabase} from '../hooks/useDatabase';
 import {useOrcamentos} from '../hooks/useOrcamentos';
 import {useTransacoes} from '../hooks/useTransacoes';
@@ -57,6 +62,7 @@ interface Props {
   armazenamento: ArmazenamentoComprovantes;
   repositorioCofres: CofreRepository;
   repositorioOrcamentos: OrcamentoRepository;
+  repositorioContas: ContaRecorrenteRepository;
   notificador: Notificador;
   seletorImagem?: SeletorImagem;
 }
@@ -94,6 +100,7 @@ function HomeScreen({
   armazenamento,
   repositorioCofres,
   repositorioOrcamentos,
+  repositorioContas,
   notificador,
   seletorImagem,
 }: Props): React.JSX.Element {
@@ -127,6 +134,26 @@ function HomeScreen({
     repositorioCofres,
     lancamentos.recarregar,
   );
+  const gerenciarContas = useMemo(
+    () =>
+      new GerenciarContasRecorrentes(
+        repositorioContas,
+        repositorio,
+        notificador,
+        verificarAlerta,
+      ),
+    [repositorioContas, repositorio, notificador, verificarAlerta],
+  );
+  const recarregarLancamentos = lancamentos.recarregar;
+  const recarregarCofres = cofres.recarregar;
+  const aoAlterarContas = useCallback(async () => {
+    await Promise.all([recarregarLancamentos(), recarregarCofres()]);
+  }, [recarregarLancamentos, recarregarCofres]);
+  const contas = useContasRecorrentes(
+    gerenciarContas,
+    lancamentos.transacoes,
+    aoAlterarContas,
+  );
   const [telaCofres, setTelaCofres] = useState<EstadoTelaCofres>({
     visivel: false,
     abrirFormulario: false,
@@ -142,6 +169,38 @@ function HomeScreen({
   const [excluindo, setExcluindo] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
   const [atualizando, setAtualizando] = useState(false);
+
+  const sincronizando = useRef(false);
+
+  const sincronizarContas = useCallback(async () => {
+    if (sincronizando.current) {
+      return;
+    }
+    sincronizando.current = true;
+    const hoje = hojeISO();
+    try {
+      const lancadas = await gerenciarContas.lancarVencidas(hoje);
+      await gerenciarContas.reagendarTodas(hoje);
+      await aoAlterarContas();
+      if (lancadas > 0) {
+        setAviso(textoContasLancadas(lancadas));
+      }
+    } catch {
+      // Sem banco o card de erro já aparece; tenta de novo ao voltar ao app.
+    } finally {
+      sincronizando.current = false;
+    }
+  }, [gerenciarContas, aoAlterarContas]);
+
+  useEffect(() => {
+    sincronizarContas();
+    const assinatura = AppState.addEventListener('change', estadoApp => {
+      if (estadoApp === 'active') {
+        sincronizarContas();
+      }
+    });
+    return () => assinatura.remove();
+  }, [sincronizarContas]);
 
   const puxarParaAtualizar = async () => {
     setAtualizando(true);
@@ -458,6 +517,7 @@ function HomeScreen({
       <OrcamentosScreen
         visivel={telaOrcamentos}
         orcamentos={orcamentos}
+        contas={contas}
         onFechar={() => setTelaOrcamentos(false)}
       />
     </View>

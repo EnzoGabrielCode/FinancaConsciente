@@ -21,6 +21,7 @@ const dados: DadosTransacao = {
   data: '2026-09-30',
   recorrencia: 'fixa',
   comprovanteUri: null,
+  contaRecorrenteId: null,
 };
 
 const normalizar = (sql: unknown) => String(sql).replace(/\s+/g, ' ').trim();
@@ -45,7 +46,7 @@ describe('SqliteTransacaoRepository', () => {
   it('cria com INSERT parametrizado e devolve o id', async () => {
     await expect(repositorio.criar(dados)).resolves.toBe(1);
     expect(ultimaChamada()).toEqual({
-      sql: 'INSERT INTO transacoes (tipo, descricao, valor_centavos, data, categoria, recorrencia, comprovante_uri, sincronizado) VALUES (?, ?, ?, ?, ?, ?, ?, 0)',
+      sql: 'INSERT INTO transacoes (tipo, descricao, valor_centavos, data, categoria, recorrencia, comprovante_uri, conta_recorrente_id, sincronizado) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)',
       parametros: [
         'receita',
         'Salário',
@@ -53,6 +54,7 @@ describe('SqliteTransacaoRepository', () => {
         '2026-09-30',
         'salario',
         'fixa',
+        null,
         null,
       ],
     });
@@ -69,13 +71,13 @@ describe('SqliteTransacaoRepository', () => {
     });
     const {sql, parametros} = ultimaChamada();
     expect(sql).not.toContain(uri);
-    expect(parametros.at(-1)).toBe(uri);
+    expect(parametros.at(-2)).toBe(uri);
   });
 
   it('atualiza pelo id e marca como não sincronizado', async () => {
     await repositorio.atualizar(7, {...dados, valorCentavos: 130000});
     expect(ultimaChamada()).toEqual({
-      sql: 'UPDATE transacoes SET tipo = ?, descricao = ?, valor_centavos = ?, data = ?, categoria = ?, recorrencia = ?, comprovante_uri = ?, sincronizado = 0 WHERE id = ?',
+      sql: 'UPDATE transacoes SET tipo = ?, descricao = ?, valor_centavos = ?, data = ?, categoria = ?, recorrencia = ?, comprovante_uri = ?, conta_recorrente_id = ?, sincronizado = 0 WHERE id = ?',
       parametros: [
         'receita',
         'Salário',
@@ -83,6 +85,7 @@ describe('SqliteTransacaoRepository', () => {
         '2026-09-30',
         'salario',
         'fixa',
+        null,
         null,
         7,
       ],
@@ -95,8 +98,9 @@ describe('SqliteTransacaoRepository', () => {
       tipo: 'despesa',
       comprovanteUri: 'file:///docs/comprovantes/novo.png',
     });
-    expect(ultimaChamada().parametros.slice(-2)).toEqual([
+    expect(ultimaChamada().parametros.slice(-3)).toEqual([
       'file:///docs/comprovantes/novo.png',
+      null,
       7,
     ]);
   });
@@ -126,6 +130,7 @@ describe('SqliteTransacaoRepository', () => {
       categoria: 'alimentacao',
       recorrencia: 'variavel',
       comprovanteUri: 'file:///docs/comprovantes/a.jpg',
+      contaRecorrenteId: null,
       sincronizado: true,
     });
     const {sql, parametros} = ultimaChamada();
@@ -288,13 +293,14 @@ describe('SqliteTransacaoRepository', () => {
           categoria: 'alimentacao',
           recorrencia: 'variavel',
           comprovanteUri: null,
+          contaRecorrenteId: null,
           sincronizado: false,
         },
         criadoEm: '2026-10-03T17:32:10.123Z',
       },
     ]);
     expect(ultimaChamada()).toEqual({
-      sql: 'SELECT id, tipo, descricao, valor_centavos, data, categoria, recorrencia, comprovante_uri, sincronizado, criado_em FROM transacoes WHERE tipo = ? AND valor_centavos = ? AND data = ? ORDER BY criado_em DESC LIMIT 10',
+      sql: 'SELECT id, tipo, descricao, valor_centavos, data, categoria, recorrencia, comprovante_uri, conta_recorrente_id, sincronizado, criado_em FROM transacoes WHERE tipo = ? AND valor_centavos = ? AND data = ? ORDER BY criado_em DESC LIMIT 10',
       parametros: ['despesa', 8990, '2026-10-03'],
     });
   });

@@ -19,11 +19,29 @@ interface LinhaTransacao {
   categoria: string;
   recorrencia: Transacao['recorrencia'];
   comprovante_uri: string | null;
+  conta_recorrente_id: number | null;
   sincronizado: number;
 }
 
 const COLUNAS =
-  'id, tipo, descricao, valor_centavos, data, categoria, recorrencia, comprovante_uri, sincronizado';
+  'id, tipo, descricao, valor_centavos, data, categoria, recorrencia, comprovante_uri, conta_recorrente_id, sincronizado';
+
+const COLUNAS_INSERT = `(tipo, descricao, valor_centavos, data, categoria, recorrencia,
+         comprovante_uri, conta_recorrente_id, sincronizado)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)`;
+
+function parametrosInsert(dados: DadosTransacao): (string | number | null)[] {
+  return [
+    dados.tipo,
+    dados.descricao,
+    dados.valorCentavos,
+    dados.data,
+    dados.categoria,
+    dados.recorrencia,
+    dados.comprovanteUri,
+    dados.contaRecorrenteId,
+  ];
+}
 
 function paraTransacao(linha: LinhaTransacao): Transacao {
   return {
@@ -35,6 +53,7 @@ function paraTransacao(linha: LinhaTransacao): Transacao {
     categoria: linha.categoria,
     recorrencia: linha.recorrencia,
     comprovanteUri: linha.comprovante_uri ?? null,
+    contaRecorrenteId: linha.conta_recorrente_id ?? null,
     sincronizado: linha.sincronizado === 1,
   };
 }
@@ -117,40 +136,38 @@ export class SqliteTransacaoRepository implements TransacaoRepository {
   async criar(dados: DadosTransacao): Promise<number> {
     const resultado = await this.executar(
       `INSERT INTO transacoes
-        (tipo, descricao, valor_centavos, data, categoria, recorrencia,
-         comprovante_uri, sincronizado)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 0)`,
-      [
-        dados.tipo,
-        dados.descricao,
-        dados.valorCentavos,
-        dados.data,
-        dados.categoria,
-        dados.recorrencia,
-        dados.comprovanteUri,
-      ],
+        ${COLUNAS_INSERT}`,
+      parametrosInsert(dados),
     );
     return resultado.insertId;
   }
 
-  async atualizar(id: number, dados: DadosTransacao): Promise<void> {
-    await this.executar(
-      `UPDATE transacoes
-        SET tipo = ?, descricao = ?, valor_centavos = ?, data = ?,
-            categoria = ?, recorrencia = ?, comprovante_uri = ?,
-            sincronizado = 0
-        WHERE id = ?`,
-      [
-        dados.tipo,
-        dados.descricao,
-        dados.valorCentavos,
-        dados.data,
-        dados.categoria,
-        dados.recorrencia,
-        dados.comprovanteUri,
-        id,
-      ],
+  async lancarRecorrente(dados: DadosTransacao): Promise<boolean> {
+    const resultado = await this.executar(
+      `INSERT OR IGNORE INTO transacoes
+        ${COLUNAS_INSERT}`,
+      parametrosInsert(dados),
     );
+    return resultado.rowsAffected > 0;
+  }
+
+  async atualizar(id: number, dados: DadosTransacao): Promise<void> {
+    try {
+      await this.executar(
+        `UPDATE transacoes
+          SET tipo = ?, descricao = ?, valor_centavos = ?, data = ?,
+              categoria = ?, recorrencia = ?, comprovante_uri = ?,
+              conta_recorrente_id = ?, sincronizado = 0
+          WHERE id = ?`,
+        [...parametrosInsert(dados), id],
+      );
+    } catch (erro) {
+      // idx_transacoes_conta_data: mover um lançamento gerado para a data de outro.
+      if (dados.contaRecorrenteId !== null && /UNIQUE/i.test(String(erro))) {
+        throw new Error('Esta conta fixa já tem um lançamento nessa data.');
+      }
+      throw erro;
+    }
   }
 
   async excluir(id: number): Promise<void> {

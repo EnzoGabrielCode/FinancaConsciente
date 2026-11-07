@@ -105,6 +105,7 @@ describe('SqliteTransacaoRepository.gastosPorCategoria', () => {
     descricao: 'Teste',
     recorrencia: 'variavel',
     comprovanteUri: null,
+    contaRecorrenteId: null,
   });
 
   let repositorio: SqliteTransacaoRepository;

@@ -19,6 +19,7 @@ const criarTransacoes = (quantidade: number): Transacao[] =>
     categoria: 'outros',
     recorrencia: 'variavel',
     comprovanteUri: null,
+    contaRecorrenteId: null,
     sincronizado: false,
   }));
 

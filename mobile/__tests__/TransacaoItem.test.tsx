@@ -17,6 +17,7 @@ const transacao = (id: number): Transacao => ({
   categoria: 'outros',
   recorrencia: 'variavel',
   comprovanteUri: null,
+  contaRecorrenteId: null,
   sincronizado: false,
 });
 
@@ -71,5 +72,49 @@ describe('TransacaoItem', () => {
     tocar(2);
 
     expect(onPress).toHaveBeenCalledWith(transacao(2));
+  });
+
+  describe('ícone de conta fixa', () => {
+    const renderizar = (dados: Partial<Transacao>) =>
+      act(() => {
+        tree = renderer.create(
+          <PaperProvider theme={darkTheme}>
+            <TransacaoItem
+              transacao={{...transacao(1), ...dados}}
+              onPress={() => {}}
+              onExcluir={() => {}}
+            />
+          </PaperProvider>,
+        );
+      });
+
+    const icones = () =>
+      tree.root.findAll(
+        no =>
+          typeof no.type === 'string' && no.props.testID === 'icone-conta-fixa',
+      );
+
+    it('aparece na despesa gerada por uma conta', () => {
+      renderizar({contaRecorrenteId: 7});
+
+      expect(icones()).toHaveLength(1);
+      expect(icones()[0].props.accessibilityLabel).toBe('conta fixa');
+    });
+
+    it('entra no rótulo lido pelo leitor de tela', () => {
+      renderizar({contaRecorrenteId: 7});
+
+      const [item] = tree.root.findAll(
+        no =>
+          no.props.testID === 'abrir-1' &&
+          typeof no.props.accessibilityLabel === 'string',
+      );
+      expect(item.props.accessibilityLabel).toContain(', conta fixa');
+    });
+
+    it('não aparece sem vínculo', () => {
+      renderizar({contaRecorrenteId: null});
+      expect(icones()).toHaveLength(0);
+    });
   });
 });

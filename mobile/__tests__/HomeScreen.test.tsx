@@ -1,4 +1,4 @@
-import 'react-native';
+import {AppState} from 'react-native';
 import React from 'react';
 import {afterEach, beforeEach, describe, expect, it, jest} from '@jest/globals';
 import {PaperProvider} from 'react-native-paper';
@@ -7,6 +7,7 @@ import renderer, {act, type ReactTestRenderer} from 'react-test-renderer';
 import type {Transacao} from '../src/domain/entities/Transacao';
 import type {ArmazenamentoComprovantes} from '../src/domain/repositories/ArmazenamentoComprovantes';
 import type {CofreRepository} from '../src/domain/repositories/CofreRepository';
+import type {ContaRecorrenteRepository} from '../src/domain/repositories/ContaRecorrenteRepository';
 import type {Notificador} from '../src/domain/repositories/Notificador';
 import type {OrcamentoRepository} from '../src/domain/repositories/OrcamentoRepository';
 import type {TransacaoRepository} from '../src/domain/repositories/TransacaoRepository';
@@ -18,6 +19,7 @@ const repositorio: TransacaoRepository = {
   listarRecentes: async () => [],
   listarPagina: async () => [],
   gastosPorCategoria: async () => ({}),
+  lancarRecorrente: async () => true,
   buscarPorId: async () => null,
   criar: async () => 1,
   atualizar: async () => {},
@@ -48,6 +50,18 @@ const repositorioOrcamentos: OrcamentoRepository = {
 const notificador: Notificador = {
   pedirPermissao: async () => true,
   notificar: async () => {},
+  agendar: async () => {},
+  cancelarComPrefixo: async () => {},
+};
+
+const repositorioContas: ContaRecorrenteRepository = {
+  listar: async () => [],
+  buscarPorId: async () => null,
+  criar: async () => 1,
+  atualizar: async () => {},
+  excluir: async () => {},
+  definirAtiva: async () => {},
+  avancarProxima: async () => {},
 };
 
 const armazenamento: ArmazenamentoComprovantes = {
@@ -67,6 +81,7 @@ async function renderizar(repositorioTela = repositorio) {
           armazenamento={armazenamento}
           repositorioCofres={repositorioCofres}
           repositorioOrcamentos={repositorioOrcamentos}
+          repositorioContas={repositorioContas}
           notificador={notificador}
         />
       </PaperProvider>,
@@ -142,6 +157,7 @@ describe('HomeScreen: últimas transações', () => {
     categoria: 'outros',
     recorrencia: 'variavel',
     comprovanteUri: null,
+    contaRecorrenteId: null,
     sincronizado: false,
   }));
   const repositorioCheio: TransacaoRepository = {
@@ -197,5 +213,137 @@ describe('HomeScreen: últimas transações', () => {
     });
 
     expect(telaTransacoes().length).toBeGreaterThan(0);
+  });
+});
+
+describe('HomeScreen: contas fixas', () => {
+  const contaVencida = (id: number) => ({
+    id,
+    descricao: `Conta ${id}`,
+    valorCentavos: 1000,
+    categoria: 'lazer',
+    frequencia: 'mensal' as const,
+    dia: 1,
+    mes: null,
+    lembrarDiasAntes: 2,
+    ativa: true,
+    proxima: '2000-01-01',
+  });
+
+  let eventos: string[];
+  let lancarRecorrente: jest.Mock<TransacaoRepository['lancarRecorrente']>;
+  let listar: jest.Mock<ContaRecorrenteRepository['listar']>;
+  let contas: ReturnType<typeof contaVencida>[];
+
+  async function renderizarComContas() {
+    await act(async () => {
+      tree = renderer.create(
+        <PaperProvider theme={darkTheme}>
+          <HomeScreen
+            repositorio={{
+              ...repositorio,
+              lancarRecorrente,
+              listarRecentes: async () => {
+                eventos.push('recarregou');
+                return [];
+              },
+            }}
+            armazenamento={armazenamento}
+            repositorioCofres={repositorioCofres}
+            repositorioOrcamentos={repositorioOrcamentos}
+            repositorioContas={{
+              ...repositorioContas,
+              listar,
+              avancarProxima: async (id, proxima) => {
+                contas = contas.map(c => (c.id === id ? {...c, proxima} : c));
+              },
+              buscarPorId: async id => contas.find(c => c.id === id) ?? null,
+            }}
+            notificador={notificador}
+          />
+        </PaperProvider>,
+      );
+    });
+  }
+
+  beforeEach(() => {
+    jest.useFakeTimers();
+    eventos = [];
+    lancarRecorrente = jest.fn<TransacaoRepository['lancarRecorrente']>(
+      async () => {
+        eventos.push('lançou');
+        return true;
+      },
+    );
+    contas = [contaVencida(1), contaVencida(2)];
+    listar = jest.fn<ContaRecorrenteRepository['listar']>(async () => contas);
+  });
+
+  afterEach(async () => {
+    await act(async () => {
+      jest.runOnlyPendingTimers();
+      tree.unmount();
+    });
+    jest.useRealTimers();
+  });
+
+  it('avisa quantas contas lançou ao abrir o app', async () => {
+    jest.setSystemTime(new Date(2000, 0, 15, 12));
+    await renderizarComContas();
+
+    expect(lancarRecorrente).toHaveBeenCalledTimes(2);
+    expect(temTexto('2 contas fixas lançadas')).toBe(true);
+  });
+
+  it('recarrega as transações depois de lançar', async () => {
+    jest.setSystemTime(new Date(2000, 0, 15, 12));
+    await renderizarComContas();
+
+    expect(eventos.lastIndexOf('recarregou')).toBeGreaterThan(
+      eventos.lastIndexOf('lançou'),
+    );
+  });
+
+  it('usa o singular com uma conta', async () => {
+    jest.setSystemTime(new Date(2000, 0, 15, 12));
+    contas = [contaVencida(1)];
+    await renderizarComContas();
+
+    expect(temTexto('1 conta fixa lançada')).toBe(true);
+  });
+
+  it('sem nada vencido não mostra o aviso', async () => {
+    listar.mockImplementation(async () => []);
+    await renderizarComContas();
+
+    expect(lancarRecorrente).not.toHaveBeenCalled();
+    expect(temTexto('1 conta fixa lançada')).toBe(false);
+  });
+
+  it('sincroniza de novo quando o app volta ao primeiro plano', async () => {
+    listar.mockImplementation(async () => []);
+    const ouvir = AppState.addEventListener as unknown as jest.Mock<
+      (evento: string, ouvinte: (estado: string) => void) => void
+    >;
+    ouvir.mockClear();
+    await renderizarComContas();
+    listar.mockClear();
+
+    await act(async () => {
+      for (const [evento, ouvinte] of ouvir.mock.calls) {
+        if (evento === 'change') {
+          ouvinte('active');
+        }
+      }
+    });
+
+    expect(listar).toHaveBeenCalled();
+  });
+
+  it('um erro no banco não derruba a tela', async () => {
+    listar.mockRejectedValue(new Error('banco fechado'));
+    await renderizarComContas();
+
+    expect(aba('aba-inicio')).toBeDefined();
   });
 });

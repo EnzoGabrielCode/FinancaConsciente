@@ -24,6 +24,7 @@ import type {CofreRepository} from '../src/domain/repositories/CofreRepository';
 import type {TransacaoRepository} from '../src/domain/repositories/TransacaoRepository';
 import AlertaDuplicataDialog from '../src/presentation/components/AlertaDuplicataDialog';
 import NovoLancamentoSheet from '../src/presentation/components/NovoLancamentoSheet';
+import type {ContaRecorrenteRepository} from '../src/domain/repositories/ContaRecorrenteRepository';
 import type {Notificador} from '../src/domain/repositories/Notificador';
 import type {OrcamentoRepository} from '../src/domain/repositories/OrcamentoRepository';
 import HomeScreen from '../src/presentation/screens/HomeScreen';
@@ -48,6 +49,8 @@ class RepositorioEmMemoria implements TransacaoRepository {
       .sort((a, b) => b.data.localeCompare(a.data) || b.id - a.id)
       .slice(0, limite),
   );
+
+  lancarRecorrente = jest.fn(async () => true);
 
   gastosPorCategoria = jest.fn(async (anoMes: string) => {
     const gastos: Record<string, number> = {};
@@ -234,6 +237,7 @@ const despesa: Transacao = {
   categoria: 'alimentacao',
   recorrencia: 'variavel',
   comprovanteUri: null,
+  contaRecorrenteId: null,
   sincronizado: true,
 };
 
@@ -253,6 +257,18 @@ const orcamentosRepo: OrcamentoRepository = {
 const notificador: Notificador = {
   pedirPermissao: async () => true,
   notificar: async () => {},
+  agendar: async () => {},
+  cancelarComPrefixo: async () => {},
+};
+
+const repositorioContas: ContaRecorrenteRepository = {
+  listar: async () => [],
+  buscarPorId: async () => null,
+  criar: async () => 1,
+  atualizar: async () => {},
+  excluir: async () => {},
+  definirAtiva: async () => {},
+  avancarProxima: async () => {},
 };
 
 async function renderizar(repositorio: TransacaoRepository) {
@@ -264,6 +280,7 @@ async function renderizar(repositorio: TransacaoRepository) {
           armazenamento={armazenamento}
           repositorioCofres={cofresRepo}
           repositorioOrcamentos={orcamentosRepo}
+          repositorioContas={repositorioContas}
           notificador={notificador}
           seletorImagem={seletor}
         />
@@ -388,6 +405,7 @@ describe('NovoLancamentoSheet', () => {
         recorrencia: 'fixa',
         descricao: 'Salário',
         comprovanteUri: null,
+        contaRecorrenteId: null,
       }),
     );
     expect(existe('novo-lancamento-sheet')).toBe(false);
@@ -1020,6 +1038,53 @@ describe('HomeScreen: dashboard', () => {
   });
 });
 
+describe('NovoLancamentoSheet: conta recorrente', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    armazenamento = new ArmazenamentoFake();
+    cofresRepo = new CofresEmMemoria();
+    seletor = criarSeletorFake();
+  });
+
+  afterEach(async () => {
+    await act(async () => {
+      jest.runOnlyPendingTimers();
+      tree.unmount();
+    });
+    jest.useRealTimers();
+  });
+
+  it('um lançamento novo vai sem vínculo', async () => {
+    const repositorio = new RepositorioEmMemoria();
+    await renderizar(repositorio);
+
+    await tocar('botao-novo-lancamento');
+    await digitar('5', '0');
+    await tocar('categoria-alimentacao');
+    await tocar('botao-salvar');
+
+    expect(repositorio.criar).toHaveBeenCalledWith(
+      expect.objectContaining({contaRecorrenteId: null}),
+    );
+  });
+
+  it('editar um lançamento gerado mantém o vínculo', async () => {
+    const repositorio = new RepositorioEmMemoria([
+      {...despesa, data: hojeISO(), contaRecorrenteId: 7},
+    ]);
+    await renderizar(repositorio);
+
+    await tocar('abrir-1');
+    await digitar('0');
+    await tocar('botao-salvar');
+
+    expect(repositorio.atualizar).toHaveBeenCalledWith(
+      1,
+      expect.objectContaining({contaRecorrenteId: 7}),
+    );
+  });
+});
+
 describe('HomeScreen: orçamentos', () => {
   beforeEach(() => {
     jest.useFakeTimers();
@@ -1094,6 +1159,7 @@ describe('HomeScreen: cofres virtuais', () => {
     categoria: 'salario',
     recorrencia: 'fixa',
     comprovanteUri: null,
+    contaRecorrenteId: null,
     sincronizado: true,
   };
 

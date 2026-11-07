@@ -11,6 +11,7 @@ export interface Transacao {
   categoria: string;
   recorrencia: Recorrencia;
   comprovanteUri: string | null;
+  contaRecorrenteId: number | null;
   sincronizado: boolean;
 }
 

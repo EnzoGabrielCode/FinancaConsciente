@@ -18,6 +18,7 @@ const despesa: DadosTransacao = {
   data: '2026-11-06',
   recorrencia: 'variavel',
   comprovanteUri: null,
+  contaRecorrenteId: null,
 };
 
 const receita: DadosTransacao = {

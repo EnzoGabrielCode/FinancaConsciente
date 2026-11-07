@@ -137,6 +137,10 @@ export function ultimoDiaDoMes(anoMes: string): string {
   return `${anoMes}-${doisDigitos(ultimoDia)}`;
 }
 
+export function nomeMes(mes: number): string {
+  return NOMES_MES[mes - 1] ?? '';
+}
+
 export function nomeMesAno(anoMes: string): string {
   const [ano, mes] = separarAnoMes(anoMes);
   return `${NOMES_MES[mes - 1] ?? ''} ${ano}`;

@@ -21,6 +21,7 @@ const nova: DadosTransacao = {
   categoria: 'alimentacao',
   recorrencia: 'variavel',
   comprovanteUri: null,
+  contaRecorrenteId: null,
 };
 
 let proximoId = 1;

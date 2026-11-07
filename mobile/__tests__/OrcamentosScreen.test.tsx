@@ -7,13 +7,16 @@ import renderer, {
   type ReactTestRenderer,
 } from 'react-test-renderer';
 
+import {GerenciarContasRecorrentes} from '../src/domain/casosDeUso/GerenciarContasRecorrentes';
 import {GerenciarOrcamentos} from '../src/domain/casosDeUso/GerenciarOrcamentos';
 import {CATEGORIAS_DESPESA} from '../src/domain/categorias';
 import {anoMesDe, hojeISO, nomeMesAno} from '../src/domain/datas';
 import type {DadosOrcamento, Orcamento} from '../src/domain/entities/Orcamento';
+import type {ContaRecorrenteRepository} from '../src/domain/repositories/ContaRecorrenteRepository';
 import type {Notificador} from '../src/domain/repositories/Notificador';
 import type {OrcamentoRepository} from '../src/domain/repositories/OrcamentoRepository';
 import type {TransacaoRepository} from '../src/domain/repositories/TransacaoRepository';
+import {useContasRecorrentes} from '../src/presentation/hooks/useContasRecorrentes';
 import {useOrcamentos} from '../src/presentation/hooks/useOrcamentos';
 import OrcamentosScreen, {
   AVISO_PERMISSAO,
@@ -48,6 +51,13 @@ describe('OrcamentosScreen', () => {
   let gastos: Record<string, number>;
   let pedirPermissao: jest.Mock<Notificador['pedirPermissao']>;
 
+  const notificador: Notificador = {
+    pedirPermissao: () => pedirPermissao(),
+    notificar: async () => {},
+    agendar: async () => {},
+    cancelarComPrefixo: async () => {},
+  };
+
   function Tela(): React.JSX.Element {
     const gerenciar = useMemo(
       () =>
@@ -56,13 +66,28 @@ describe('OrcamentosScreen', () => {
           {
             gastosPorCategoria: async () => gastos,
           } as unknown as TransacaoRepository,
-          {pedirPermissao, notificar: async () => {}},
+          notificador,
         ),
       [],
     );
     const orcamentos = useOrcamentos(gerenciar);
+    const gerenciarContas = useMemo(
+      () =>
+        new GerenciarContasRecorrentes(
+          {listar: async () => []} as unknown as ContaRecorrenteRepository,
+          {} as TransacaoRepository,
+          notificador,
+        ),
+      [],
+    );
+    const contas = useContasRecorrentes(gerenciarContas);
     return (
-      <OrcamentosScreen visivel orcamentos={orcamentos} onFechar={() => {}} />
+      <OrcamentosScreen
+        visivel
+        orcamentos={orcamentos}
+        contas={contas}
+        onFechar={() => {}}
+      />
     );
   }
 

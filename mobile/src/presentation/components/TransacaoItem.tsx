@@ -46,6 +46,7 @@ function TransacaoItem({
     transacao.valorCentavos,
   )}`;
   const fixa = receita && transacao.recorrencia === 'fixa';
+  const contaFixa = !receita && transacao.contaRecorrenteId !== null;
 
   const panResponder = useMemo(() => {
     const animarPara = (x: number) => {
@@ -142,8 +143,8 @@ function TransacaoItem({
           } de ${formatarCentavos(
             transacao.valorCentavos,
           )}, ${formatarDataAmigavel(transacao.data)}${fixa ? ', fixa' : ''}${
-            transacao.comprovanteUri !== null ? ', tem comprovante' : ''
-          }`}
+            contaFixa ? ', conta fixa' : ''
+          }${transacao.comprovanteUri !== null ? ', tem comprovante' : ''}`}
           accessibilityHint="Toque para editar. Deslize para a esquerda para excluir."
           accessibilityActions={ACOES_ACESSIBILIDADE}
           onAccessibilityAction={acaoAcessibilidade}
@@ -157,9 +158,23 @@ function TransacaoItem({
             <Icon source={categoria.icone} size={20} color={categoria.cor} />
           </View>
           <View style={styles.meio}>
-            <Text style={styles.titulo} numberOfLines={1}>
-              {transacao.descricao}
-            </Text>
+            <View style={styles.linhaTitulo}>
+              <Text style={styles.titulo} numberOfLines={1}>
+                {transacao.descricao}
+              </Text>
+              {contaFixa && (
+                <View
+                  accessible
+                  accessibilityLabel="conta fixa"
+                  testID="icone-conta-fixa">
+                  <Icon
+                    source="repeat"
+                    size={12}
+                    color={CORES.textoSecundario}
+                  />
+                </View>
+              )}
+            </View>
             <View style={styles.linhaData}>
               <Text style={styles.data}>
                 {formatarDataAmigavel(transacao.data)}
@@ -236,7 +251,13 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 2,
   },
+  linhaTitulo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
   titulo: {
+    flexShrink: 1,
     fontFamily: FONTES.medio,
     fontSize: 14,
     color: CORES.texto,

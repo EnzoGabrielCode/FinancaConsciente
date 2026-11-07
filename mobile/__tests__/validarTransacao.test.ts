@@ -11,6 +11,7 @@ const valida: DadosTransacao = {
   data: '2026-09-30',
   recorrencia: 'fixa',
   comprovanteUri: null,
+  contaRecorrenteId: null,
 };
 
 describe('validarTransacao', () => {
