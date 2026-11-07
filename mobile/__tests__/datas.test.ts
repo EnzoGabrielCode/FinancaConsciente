@@ -2,7 +2,12 @@ import {describe, expect, it} from '@jest/globals';
 
 import {
   anoMesDe,
+  avancarMes,
+  diasEntre,
   formatarCabecalhoDia,
+  formatarDiaCurto,
+  formatarMesCurto,
+  mesesEntre,
   nomeMesAno,
   ultimoDiaDoMes,
   formatarDataAmigavel,
@@ -142,5 +147,32 @@ describe('nomeMesAno', () => {
   it('escreve o mês por extenso com o ano', () => {
     expect(nomeMesAno('2026-11')).toBe('Novembro 2026');
     expect(nomeMesAno('2026-03')).toBe('Março 2026');
+  });
+});
+
+describe('avancarMes e mesesEntre', () => {
+  it('atravessa a virada de ano nos dois sentidos', () => {
+    expect(avancarMes('2026-12', 1)).toBe('2027-01');
+    expect(avancarMes('2027-01', -1)).toBe('2026-12');
+    expect(avancarMes('2026-11', 24)).toBe('2028-11');
+    expect(mesesEntre('2026-12', '2027-01')).toBe(1);
+    expect(mesesEntre('2026-11', '2026-10')).toBe(-1);
+  });
+});
+
+describe('diasEntre', () => {
+  it('não sofre com bissexto nem virada de ano', () => {
+    expect(diasEntre('2026-11-07', '2026-11-30')).toBe(23);
+    expect(diasEntre('2028-02-28', '2028-03-01')).toBe(2);
+    expect(diasEntre('2026-12-31', '2027-01-01')).toBe(1);
+    expect(diasEntre('2026-11-07', '2026-10-31')).toBe(-7);
+  });
+});
+
+describe('formatarDiaCurto e formatarMesCurto', () => {
+  it('escrevem o dia e o mês abreviados', () => {
+    expect(formatarDiaCurto('2026-11-30')).toBe('30 de nov.');
+    expect(formatarDiaCurto('2026-03-05')).toBe('5 de mar.');
+    expect(formatarMesCurto('2026-12')).toBe('dez. 2026');
   });
 });

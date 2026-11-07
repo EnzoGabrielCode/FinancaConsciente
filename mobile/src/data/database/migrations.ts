@@ -94,6 +94,14 @@ export const MIGRATIONS: Migration[] = [
       'CREATE INDEX IF NOT EXISTS idx_transacoes_orcamento ON transacoes (tipo, categoria, data)',
     ],
   },
+  {
+    version: 7,
+    description: 'Adiciona prazo às metas dos cofres',
+    statements: [
+      `ALTER TABLE cofres ADD COLUMN prazo TEXT
+        CHECK (prazo IS NULL OR prazo GLOB '[0-9][0-9][0-9][0-9]-[01][0-9]')`,
+    ],
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

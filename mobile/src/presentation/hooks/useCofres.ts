@@ -2,6 +2,7 @@ import {useCallback, useEffect, useRef, useState} from 'react';
 
 import type {GerenciarCofres} from '../../domain/casosDeUso/GerenciarCofres';
 import {resumoCofres, type ResumoCofres} from '../../domain/cofres';
+import {hojeISO} from '../../domain/datas';
 import type {
   Cofre,
   DadosCofre,
@@ -38,7 +39,7 @@ export function useCofres(
 ): UseCofres {
   const [estado, setEstado] = useState<EstadoCofres>({
     cofres: [],
-    resumo: resumoCofres([]),
+    resumo: resumoCofres([], hojeISO()),
     disponivelCentavos: 0,
     carregando: true,
     erro: null,
@@ -67,7 +68,7 @@ export function useCofres(
       if (ehAMaisRecente()) {
         setEstado({
           cofres,
-          resumo: resumoCofres(cofres),
+          resumo: resumoCofres(cofres, hojeISO()),
           disponivelCentavos,
           carregando: false,
           erro: null,

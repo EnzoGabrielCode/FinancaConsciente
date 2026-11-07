@@ -14,6 +14,7 @@ interface LinhaCofre {
   icone: string;
   cor: string;
   meta_centavos: number | null;
+  prazo: string | null;
   saldo: number | string | null;
 }
 
@@ -28,7 +29,7 @@ interface LinhaMovimento {
 const SOMA_SALDO = `COALESCE(SUM(CASE WHEN m.tipo = 'deposito' THEN m.valor_centavos
     ELSE -m.valor_centavos END), 0)`;
 
-const SELECT_COFRES = `SELECT c.id, c.nome, c.icone, c.cor, c.meta_centavos,
+const SELECT_COFRES = `SELECT c.id, c.nome, c.icone, c.cor, c.meta_centavos, c.prazo,
     ${SOMA_SALDO} AS saldo
   FROM cofres c
   LEFT JOIN movimentos_cofre m ON m.cofre_id = c.id`;
@@ -43,6 +44,7 @@ function paraCofre(linha: LinhaCofre): Cofre {
       linha.meta_centavos === null || linha.meta_centavos === undefined
         ? null
         : Number(linha.meta_centavos),
+    prazo: linha.prazo ?? null,
     saldoCentavos: Number(linha.saldo ?? 0),
   };
 }
@@ -99,9 +101,9 @@ export class SqliteCofreRepository implements CofreRepository {
 
   async criar(dados: DadosCofre): Promise<number> {
     const resultado = await this.executar(
-      `INSERT INTO cofres (nome, icone, cor, meta_centavos, sincronizado)
-        VALUES (?, ?, ?, ?, 0)`,
-      [dados.nome, dados.icone, dados.cor, dados.metaCentavos],
+      `INSERT INTO cofres (nome, icone, cor, meta_centavos, prazo, sincronizado)
+        VALUES (?, ?, ?, ?, ?, 0)`,
+      [dados.nome, dados.icone, dados.cor, dados.metaCentavos, dados.prazo],
     );
     return resultado.insertId;
   }
@@ -109,9 +111,10 @@ export class SqliteCofreRepository implements CofreRepository {
   async atualizar(id: number, dados: DadosCofre): Promise<void> {
     await this.executar(
       `UPDATE cofres
-        SET nome = ?, icone = ?, cor = ?, meta_centavos = ?, sincronizado = 0
+        SET nome = ?, icone = ?, cor = ?, meta_centavos = ?, prazo = ?,
+            sincronizado = 0
         WHERE id = ?`,
-      [dados.nome, dados.icone, dados.cor, dados.metaCentavos, id],
+      [dados.nome, dados.icone, dados.cor, dados.metaCentavos, dados.prazo, id],
     );
   }
 

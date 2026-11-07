@@ -85,6 +85,7 @@ const viagem: DadosCofre = {
   icone: '✈️',
   cor: '#64B5F6',
   metaCentavos: 800000,
+  prazo: null,
 };
 
 describe('GerenciarCofres', () => {
@@ -188,5 +189,47 @@ describe('GerenciarCofres', () => {
       'Já existe um cofre com esse nome.',
     );
     expect(cofres.atualizar).not.toHaveBeenCalled();
+  });
+
+  describe('prazo', () => {
+    const VENCIDO = '2000-01';
+
+    it('recusa criar meta com prazo passado', async () => {
+      await expect(
+        gerenciar.criar({...viagem, nome: 'Carro', prazo: VENCIDO}),
+      ).rejects.toThrow('antes do mês atual');
+    });
+
+    it('deixa renomear uma meta vencida mantendo o prazo', async () => {
+      cofres.cofres = cofres.cofres.map(c => ({...c, prazo: VENCIDO}));
+
+      await gerenciar.atualizar(idViagem, {
+        ...viagem,
+        nome: 'Férias',
+        prazo: VENCIDO,
+      });
+
+      expect(cofres.cofres[0]).toMatchObject({
+        nome: 'Férias',
+        prazo: VENCIDO,
+      });
+    });
+
+    it('não deixa trocar uma meta vencida por outro mês passado', async () => {
+      cofres.cofres = cofres.cofres.map(c => ({...c, prazo: VENCIDO}));
+
+      await expect(
+        gerenciar.atualizar(idViagem, {...viagem, prazo: '2000-02'}),
+      ).rejects.toThrow('antes do mês atual');
+    });
+
+    it('totalMensalMetas soma as metas em andamento', async () => {
+      cofres.cofres = cofres.cofres.map(c => ({...c, prazo: '2027-01'}));
+
+      await expect(gerenciar.totalMensalMetas('2026-11-07')).resolves.toBe(
+        266667,
+      );
+      await expect(gerenciar.totalMensalMetas('2027-02-01')).resolves.toBe(0);
+    });
   });
 });

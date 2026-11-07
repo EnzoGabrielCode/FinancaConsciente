@@ -4,10 +4,14 @@ export interface Cofre {
   icone: string;
   cor: string;
   metaCentavos: number | null;
+  prazo: string | null;
   saldoCentavos: number;
 }
 
-export type DadosCofre = Pick<Cofre, 'nome' | 'icone' | 'cor' | 'metaCentavos'>;
+export type DadosCofre = Pick<
+  Cofre,
+  'nome' | 'icone' | 'cor' | 'metaCentavos' | 'prazo'
+>;
 
 export type TipoMovimento = 'deposito' | 'retirada';
 

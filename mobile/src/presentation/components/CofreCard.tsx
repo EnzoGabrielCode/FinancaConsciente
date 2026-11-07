@@ -10,8 +10,10 @@ import {
 import {IconButton, Menu} from 'react-native-paper';
 
 import {progressoCofre} from '../../domain/cofres';
+import {hojeISO} from '../../domain/datas';
 import {formatarCentavos, formatarPercentual} from '../../domain/dinheiro';
 import type {Cofre} from '../../domain/entities/Cofre';
+import {fraseDoPlano, planoDaMeta, type SituacaoMeta} from '../../domain/metas';
 import {CORES, comAlfa} from '../theme/cores';
 import {FONTES} from '../theme/fontes';
 
@@ -25,6 +27,12 @@ interface Props {
   style?: StyleProp<ViewStyle>;
 }
 
+const COR_PLANO: Record<SituacaoMeta, string> = {
+  'em-andamento': CORES.textoSecundario,
+  concluida: CORES.verde,
+  vencida: CORES.vermelho,
+};
+
 function CofreCard({
   cofre,
   onPress,
@@ -37,6 +45,8 @@ function CofreCard({
   const [menuAberto, setMenuAberto] = useState(false);
   const progresso = progressoCofre(cofre.saldoCentavos, cofre.metaCentavos);
   const saldo = formatarCentavos(cofre.saldoCentavos);
+  const plano = planoDaMeta(cofre, hojeISO());
+  const frasePlano = plano && fraseDoPlano(plano);
 
   const escolher = (acao: (cofre: Cofre) => void) => () => {
     setMenuAberto(false);
@@ -47,7 +57,9 @@ function CofreCard({
     <Pressable
       onPress={() => onPress(cofre)}
       accessibilityRole="button"
-      accessibilityLabel={`Cofre ${cofre.nome}: ${saldo} guardados`}
+      accessibilityLabel={`Cofre ${cofre.nome}: ${saldo} guardados${
+        frasePlano ? `. ${frasePlano}` : ''
+      }`}
       testID={`cofre-card-${cofre.id}`}
       style={({pressed}) => [
         styles.card,
@@ -135,6 +147,13 @@ function CofreCard({
             {formatarPercentual(progresso, {casas: 0, sinalPositivo: false})} ·
             Meta: {formatarCentavos(cofre.metaCentavos)}
           </Text>
+          {plano && (
+            <Text
+              style={[styles.plano, {color: COR_PLANO[plano.situacao]}]}
+              testID={`cofre-plano-${cofre.id}`}>
+              {frasePlano}
+            </Text>
+          )}
         </>
       ) : (
         <Text style={styles.detalhe} testID={`cofre-meta-${cofre.id}`}>
@@ -206,6 +225,10 @@ const styles = StyleSheet.create({
     fontFamily: FONTES.regular,
     fontSize: 10,
     color: CORES.textoApagado,
+  },
+  plano: {
+    fontFamily: FONTES.seminegrito,
+    fontSize: 10,
   },
 });
 

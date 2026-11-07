@@ -1,7 +1,9 @@
 import {beforeEach, describe, expect, it, jest} from '@jest/globals';
 import SQLite, {type SQLiteDatabase} from 'react-native-sqlite-storage';
 
+import {runMigrations} from '../src/data/database/migrations';
 import {SqliteCofreRepository} from '../src/data/repositories/SqliteCofreRepository';
+import {criarBancoReal} from '../test-utils/bancoReal';
 
 type MockFn = jest.Mock & {mock: {calls: unknown[][]}};
 
@@ -75,6 +77,7 @@ describe('SqliteCofreRepository', () => {
         icone: '✈️',
         cor: '#64B5F6',
         metaCentavos: 800000,
+        prazo: null,
         saldoCentavos: 496000,
       },
       {
@@ -83,11 +86,12 @@ describe('SqliteCofreRepository', () => {
         icone: '🛡️',
         cor: '#39FF84',
         metaCentavos: null,
+        prazo: null,
         saldoCentavos: 0,
       },
     ]);
     expect(ultimaChamada()).toEqual({
-      sql: "SELECT c.id, c.nome, c.icone, c.cor, c.meta_centavos, COALESCE(SUM(CASE WHEN m.tipo = 'deposito' THEN m.valor_centavos ELSE -m.valor_centavos END), 0) AS saldo FROM cofres c LEFT JOIN movimentos_cofre m ON m.cofre_id = c.id GROUP BY c.id ORDER BY c.criado_em, c.id",
+      sql: "SELECT c.id, c.nome, c.icone, c.cor, c.meta_centavos, c.prazo, COALESCE(SUM(CASE WHEN m.tipo = 'deposito' THEN m.valor_centavos ELSE -m.valor_centavos END), 0) AS saldo FROM cofres c LEFT JOIN movimentos_cofre m ON m.cofre_id = c.id GROUP BY c.id ORDER BY c.criado_em, c.id",
       parametros: [],
     });
   });
@@ -107,11 +111,12 @@ describe('SqliteCofreRepository', () => {
         icone: '🏠',
         cor: '#FFB74D',
         metaCentavos: null,
+        prazo: null,
       }),
     ).resolves.toBe(1);
     expect(ultimaChamada()).toEqual({
-      sql: 'INSERT INTO cofres (nome, icone, cor, meta_centavos, sincronizado) VALUES (?, ?, ?, ?, 0)',
-      parametros: [nome, '🏠', '#FFB74D', null],
+      sql: 'INSERT INTO cofres (nome, icone, cor, meta_centavos, prazo, sincronizado) VALUES (?, ?, ?, ?, ?, 0)',
+      parametros: [nome, '🏠', '#FFB74D', null, null],
     });
   });
 
@@ -121,10 +126,11 @@ describe('SqliteCofreRepository', () => {
       icone: '🚗',
       cor: '#FF6B6B',
       metaCentavos: 5000000,
+      prazo: '2027-06',
     });
     expect(ultimaChamada()).toEqual({
-      sql: 'UPDATE cofres SET nome = ?, icone = ?, cor = ?, meta_centavos = ?, sincronizado = 0 WHERE id = ?',
-      parametros: ['Carro', '🚗', '#FF6B6B', 5000000, 3],
+      sql: 'UPDATE cofres SET nome = ?, icone = ?, cor = ?, meta_centavos = ?, prazo = ?, sincronizado = 0 WHERE id = ?',
+      parametros: ['Carro', '🚗', '#FF6B6B', 5000000, '2027-06', 3],
     });
   });
 
@@ -200,5 +206,47 @@ describe('SqliteCofreRepository', () => {
     expect(ultimaChamada().sql).toBe(
       "SELECT COALESCE(SUM(CASE WHEN m.tipo = 'deposito' THEN m.valor_centavos ELSE -m.valor_centavos END), 0) AS total FROM movimentos_cofre m",
     );
+  });
+});
+
+describe('SqliteCofreRepository: prazo no banco', () => {
+  const dados = {
+    nome: 'Viagem',
+    icone: '✈️',
+    cor: '#64B5F6',
+    metaCentavos: 800000,
+  };
+
+  async function criarRepositorio() {
+    const banco = criarBancoReal();
+    await runMigrations(banco);
+    return new SqliteCofreRepository(async () => banco);
+  }
+
+  it('grava e lê o prazo', async () => {
+    const repositorio = await criarRepositorio();
+    const id = await repositorio.criar({...dados, prazo: '2026-12'});
+
+    await expect(repositorio.buscarPorId(id)).resolves.toMatchObject({
+      prazo: '2026-12',
+    });
+    await expect(repositorio.listar()).resolves.toMatchObject([
+      {prazo: '2026-12'},
+    ]);
+  });
+
+  it('atualiza e limpa o prazo', async () => {
+    const repositorio = await criarRepositorio();
+    const id = await repositorio.criar({...dados, prazo: '2026-12'});
+
+    await repositorio.atualizar(id, {...dados, prazo: '2027-03'});
+    await expect(repositorio.buscarPorId(id)).resolves.toMatchObject({
+      prazo: '2027-03',
+    });
+
+    await repositorio.atualizar(id, {...dados, prazo: null});
+    await expect(repositorio.buscarPorId(id)).resolves.toMatchObject({
+      prazo: null,
+    });
   });
 });

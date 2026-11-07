@@ -20,6 +20,7 @@ const viagem: Cofre = {
   icone: '✈️',
   cor: '#64B5F6',
   metaCentavos: 800000,
+  prazo: null,
   saldoCentavos: 30000,
 };
 

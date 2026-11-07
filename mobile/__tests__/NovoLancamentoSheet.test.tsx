@@ -1131,6 +1131,7 @@ describe('HomeScreen: cofres virtuais', () => {
       icone: '✈️',
       cor: '#64B5F6',
       metaCentavos: 800000,
+      prazo: null,
     });
     return id;
   }
@@ -1165,6 +1166,7 @@ describe('HomeScreen: cofres virtuais', () => {
       icone: '💰',
       cor: '#39FF84',
       metaCentavos: 800000,
+      prazo: null,
     });
     expect(existe('cofre-form-sheet')).toBe(false);
     expect(textoDe(porId('cofres-snackbar'))).toBe('Cofre criado');

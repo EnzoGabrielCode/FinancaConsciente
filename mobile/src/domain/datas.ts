@@ -87,6 +87,30 @@ function montarAnoMes(indiceMeses: number): string {
   return `${ano}-${doisDigitos(mes)}`;
 }
 
+const indiceDoMes = (anoMes: string) => {
+  const [ano, mes] = separarAnoMes(anoMes);
+  return ano * 12 + (mes - 1);
+};
+
+export function anoMesValido(anoMes: string): boolean {
+  return /^\d{4}-(0[1-9]|1[0-2])$/.test(anoMes);
+}
+
+export function avancarMes(anoMes: string, delta: number): string {
+  return montarAnoMes(indiceDoMes(anoMes) + delta);
+}
+
+export function mesesEntre(deAnoMes: string, ateAnoMes: string): number {
+  return indiceDoMes(ateAnoMes) - indiceDoMes(deAnoMes);
+}
+
+// Em UTC: no horário local, um dia com mudança de fuso não teria 24 horas.
+export function diasEntre(deISO: string, ateISO: string): number {
+  const emDias = (dataISO: string) =>
+    Date.parse(`${dataISO}T00:00:00Z`) / 864e5;
+  return emDias(ateISO) - emDias(deISO);
+}
+
 export function anoMesDe(dataISO: string): string {
   return dataISO.slice(0, 7);
 }
@@ -130,9 +154,17 @@ export function formatarCabecalhoDia(
   if (amigavel === 'Hoje' || amigavel === 'Ontem') {
     return amigavel;
   }
-  const [ano, , dia] = dataISO.split('-');
-  const rotulo = `${Number(dia)} de ${rotuloMes(anoMesDe(dataISO))}.`;
+  const [ano] = dataISO.split('-');
+  const rotulo = formatarDiaCurto(dataISO);
   return Number(ano) === hoje.getFullYear() ? rotulo : `${rotulo} de ${ano}`;
+}
+
+export function formatarDiaCurto(dataISO: string): string {
+  return `${Number(dataISO.slice(8))} de ${rotuloMes(anoMesDe(dataISO))}.`;
+}
+
+export function formatarMesCurto(anoMes: string): string {
+  return `${rotuloMes(anoMes)}. ${separarAnoMes(anoMes)[0]}`;
 }
 
 export function saudacao(agora: Date = new Date()): string {

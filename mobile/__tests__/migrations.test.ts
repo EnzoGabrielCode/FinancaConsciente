@@ -184,7 +184,6 @@ describe('migração v6: orçamentos', () => {
   }
 
   it('cria as tabelas e o índice da soma do mês', async () => {
-    expect(LATEST_VERSION).toBe(6);
     const db = await bancoMigrado();
     const [resultado] = await db.executeSql(
       "SELECT name FROM sqlite_master WHERE name IN ('orcamentos', 'alertas_orcamento', 'idx_transacoes_orcamento')",
@@ -195,7 +194,7 @@ describe('migração v6: orçamentos', () => {
   it('atualiza um banco que já estava na v5', async () => {
     const db = criarBancoReal();
     await runMigrations(db, MIGRATIONS.slice(0, 5));
-    await expect(runMigrations(db)).resolves.toBe(6);
+    await expect(runMigrations(db, MIGRATIONS.slice(0, 6))).resolves.toBe(6);
     await expect(inserirOrcamento(db, 'lazer', 1000)).resolves.toBeDefined();
   });
 
@@ -232,4 +231,52 @@ describe('migração v6: orçamentos', () => {
       ),
     ).rejects.toThrow(/CHECK/);
   });
+});
+
+describe('migração v7: prazo das metas', () => {
+  const inserirCofre = (db: SQLiteDatabase, prazo: string | null) =>
+    db.executeSql(
+      'INSERT INTO cofres (nome, icone, cor, meta_centavos, prazo) VALUES (?, ?, ?, ?, ?)',
+      ['Viagem', '✈️', '#64B5F6', 800000, prazo],
+    );
+
+  it('é a versão mais recente', () => {
+    expect(LATEST_VERSION).toBe(7);
+  });
+
+  it('um cofre antigo continua com prazo NULL', async () => {
+    const db = criarBancoReal();
+    await runMigrations(db, MIGRATIONS.slice(0, 6));
+    await db.executeSql(
+      'INSERT INTO cofres (nome, icone, cor, meta_centavos) VALUES (?, ?, ?, ?)',
+      ['Antigo', '💰', '#39FF84', 1000],
+    );
+
+    await expect(runMigrations(db)).resolves.toBe(7);
+
+    const [resultado] = await db.executeSql(
+      'SELECT nome, meta_centavos, prazo FROM cofres',
+    );
+    expect(resultado.rows.item(0)).toMatchObject({
+      nome: 'Antigo',
+      meta_centavos: 1000,
+      prazo: null,
+    });
+  });
+
+  it('aceita prazo válido e NULL', async () => {
+    const db = criarBancoReal();
+    await runMigrations(db);
+    await expect(inserirCofre(db, '2026-12')).resolves.toBeDefined();
+    await expect(inserirCofre(db, null)).resolves.toBeDefined();
+  });
+
+  it.each([['2026-1'], ['26-12'], ['dez-2026']])(
+    'rejeita o prazo "%s"',
+    async prazo => {
+      const db = criarBancoReal();
+      await runMigrations(db);
+      await expect(inserirCofre(db, prazo)).rejects.toThrow(/CHECK/);
+    },
+  );
 });

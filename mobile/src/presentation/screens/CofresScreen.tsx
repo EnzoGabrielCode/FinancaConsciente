@@ -210,6 +210,14 @@ function CofresScreen({
             {formatarCentavos(disponivelCentavos)}
           </Text>
         </Text>
+        {resumo.totalMensalMetasCentavos > 0 && (
+          <Text style={styles.disponivel} testID="cofres-total-mensal">
+            Para cumprir suas metas:{' '}
+            <Text style={styles.valorDisponivel}>
+              {formatarCentavos(resumo.totalMensalMetasCentavos)}/mês
+            </Text>
+          </Text>
+        )}
       </LinearGradient>
 
       {cofres.erro && (

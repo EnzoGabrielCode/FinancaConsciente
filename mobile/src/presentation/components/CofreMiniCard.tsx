@@ -1,8 +1,10 @@
 import React from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
 
+import {hojeISO} from '../../domain/datas';
 import {formatarCentavos} from '../../domain/dinheiro';
 import type {Cofre} from '../../domain/entities/Cofre';
+import {parcelaDoPlano, planoDaMeta} from '../../domain/metas';
 import {CORES, comAlfa} from '../theme/cores';
 import {FONTES} from '../theme/fontes';
 
@@ -13,11 +15,16 @@ interface Props {
 
 function CofreMiniCard({cofre, onPress}: Props): React.JSX.Element {
   const saldo = formatarCentavos(cofre.saldoCentavos);
+  const plano = planoDaMeta(cofre, hojeISO());
+  const parcela = plano && parcelaDoPlano(plano);
+  const textoParcela = parcela && `${parcela.valor}/${parcela.unidade}`;
   return (
     <Pressable
       onPress={() => onPress(cofre)}
       accessibilityRole="button"
-      accessibilityLabel={`Cofre ${cofre.nome}: ${saldo} guardados`}
+      accessibilityLabel={`Cofre ${cofre.nome}: ${saldo} guardados${
+        textoParcela ? `. ${textoParcela}` : ''
+      }`}
       testID={`cofre-mini-${cofre.id}`}
       style={({pressed}) => [
         styles.card,
@@ -36,6 +43,14 @@ function CofreMiniCard({cofre, onPress}: Props): React.JSX.Element {
         adjustsFontSizeToFit>
         {saldo}
       </Text>
+      {textoParcela && (
+        <Text
+          style={styles.parcela}
+          numberOfLines={1}
+          testID={`cofre-mini-parcela-${cofre.id}`}>
+          {textoParcela}
+        </Text>
+      )}
     </Pressable>
   );
 }
@@ -74,6 +89,12 @@ const styles = StyleSheet.create({
     marginTop: 3,
     fontFamily: FONTES.monoNegrito,
     fontSize: 14,
+  },
+  parcela: {
+    marginTop: 3,
+    fontFamily: FONTES.regular,
+    fontSize: 10,
+    color: CORES.textoSecundario,
   },
 });
 

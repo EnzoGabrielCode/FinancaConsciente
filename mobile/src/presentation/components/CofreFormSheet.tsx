@@ -17,6 +17,7 @@ import {
   validarCofre,
   type ErrosCofre,
 } from '../../domain/cofres';
+import {anoMesDe, formatarMesCurto, hojeISO} from '../../domain/datas';
 import {
   aplicarTecla,
   centavosParaDigitado,
@@ -24,6 +25,15 @@ import {
   paraCentavos,
 } from '../../domain/dinheiro';
 import type {Cofre, DadosCofre} from '../../domain/entities/Cofre';
+import {
+  avancarMes,
+  fraseDoPlano,
+  MAX_ANOS_PRAZO,
+  mesesAFrente,
+  parcelaDoPlano,
+  planoDaMeta,
+  type PlanoMeta,
+} from '../../domain/metas';
 import {CORES, comAlfa} from '../theme/cores';
 import {FONTES} from '../theme/fontes';
 import {mensagemDeErro} from '../utils/mensagemDeErro';
@@ -38,6 +48,20 @@ interface Props {
 
 const [ICONE_PADRAO] = ICONES_COFRE;
 const [COR_PADRAO] = CORES_COFRE;
+
+const ATALHOS_PRAZO = [
+  {meses: 3, rotulo: '3 meses'},
+  {meses: 6, rotulo: '6 meses'},
+  {meses: 12, rotulo: '1 ano'},
+  {meses: 24, rotulo: '2 anos'},
+];
+
+function previaDoPlano(plano: PlanoMeta): string {
+  const parcela = parcelaDoPlano(plano);
+  return parcela
+    ? `Guarde ${parcela.valor} por ${parcela.unidade} até ${parcela.ate}`
+    : fraseDoPlano(plano);
+}
 
 export function filtrarMeta(texto: string): string {
   return Array.from(texto.replace(/\./g, ',')).reduce(aplicarTecla, '');
@@ -56,6 +80,7 @@ function CofreFormSheet({
   const [cor, setCor] = useState<string>(COR_PADRAO);
   const [nome, setNome] = useState('');
   const [meta, setMeta] = useState('');
+  const [prazo, setPrazo] = useState<string | null>(null);
   const [erros, setErros] = useState<ErrosCofre>({});
   const [erroGeral, setErroGeral] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
@@ -70,6 +95,7 @@ function CofreFormSheet({
     setMeta(
       cofre?.metaCentavos ? centavosParaDigitado(cofre.metaCentavos) : '',
     );
+    setPrazo(cofre?.prazo ?? null);
     setErros({});
     setErroGeral(null);
     setSalvando(false);
@@ -77,6 +103,30 @@ function CofreFormSheet({
 
   const temNome = nome.trim() !== '';
   const metaCentavos = meta === '' ? null : paraCentavos(meta);
+  const temMeta = metaCentavos !== null && metaCentavos > 0;
+  const hoje = hojeISO();
+  const mesAtual = anoMesDe(hoje);
+  const ultimoMes = mesesAFrente(hoje, MAX_ANOS_PRAZO * 12);
+  const prazoDesabilitado = !temMeta || salvando;
+  const podeVoltarMes =
+    !prazoDesabilitado && prazo !== null && prazo > mesAtual;
+  const podeAvancarMes =
+    !prazoDesabilitado && (prazo === null || prazo < ultimoMes);
+  const plano = planoDaMeta(
+    {metaCentavos, prazo, saldoCentavos: cofre?.saldoCentavos ?? 0},
+    hoje,
+  );
+
+  const mudarPrazo = (novoPrazo: string | null) => {
+    setPrazo(novoPrazo);
+    setErros(({prazo: _, ...resto}) => resto);
+  };
+
+  const avancarPrazo = () => {
+    const proximo = avancarMes(prazo ?? mesAtual, 1);
+    // Um prazo vencido pula direto para o mês atual.
+    mudarPrazo(proximo < mesAtual ? mesAtual : proximo);
+  };
 
   const fechar = () => {
     if (!salvando) {
@@ -86,8 +136,10 @@ function CofreFormSheet({
 
   const salvar = async () => {
     const resultado = validarCofre(
-      {nome, icone, cor, metaCentavos},
+      {nome, icone, cor, metaCentavos, prazo},
       nomesExistentes.filter(existente => existente !== cofre?.nome),
+      hoje,
+      cofre?.prazo ?? null,
     );
     if (!resultado.valido) {
       setErros(resultado.erros);
@@ -239,8 +291,12 @@ function CofreFormSheet({
                 placeholder="0,00"
                 value={meta}
                 onChangeText={texto => {
-                  setMeta(filtrarMeta(texto));
+                  const novaMeta = filtrarMeta(texto);
+                  setMeta(novaMeta);
                   setErros(({metaCentavos: _, ...resto}) => resto);
+                  if (!(paraCentavos(novaMeta) > 0)) {
+                    mudarPrazo(null);
+                  }
                 }}
                 keyboardType="decimal-pad"
                 disabled={salvando}
@@ -257,6 +313,91 @@ function CofreFormSheet({
               {erros.metaCentavos && (
                 <HelperText type="error" testID="cofre-erro-meta">
                   {erros.metaCentavos}
+                </HelperText>
+              )}
+            </View>
+
+            <View style={prazoDesabilitado && styles.secaoDesabilitada}>
+              <Text style={styles.rotulo}>PRAZO (OPCIONAL)</Text>
+              <View style={styles.linhaPrazo}>
+                <Pressable
+                  onPress={() => prazo && mudarPrazo(avancarMes(prazo, -1))}
+                  disabled={!podeVoltarMes}
+                  accessibilityRole="button"
+                  accessibilityLabel="Mês anterior"
+                  accessibilityState={{disabled: !podeVoltarMes}}
+                  testID="cofre-prazo-anterior"
+                  style={[
+                    styles.setaPrazo,
+                    !podeVoltarMes && styles.setaDesabilitada,
+                  ]}>
+                  <Icon source="chevron-left" size={20} color={CORES.texto} />
+                </Pressable>
+                <Text style={styles.mesPrazo} testID="cofre-prazo-mes">
+                  {prazo ? formatarMesCurto(prazo) : 'Sem prazo'}
+                </Text>
+                <Pressable
+                  onPress={avancarPrazo}
+                  disabled={!podeAvancarMes}
+                  accessibilityRole="button"
+                  accessibilityLabel="Próximo mês"
+                  accessibilityState={{disabled: !podeAvancarMes}}
+                  testID="cofre-prazo-proximo"
+                  style={[
+                    styles.setaPrazo,
+                    !podeAvancarMes && styles.setaDesabilitada,
+                  ]}>
+                  <Icon source="chevron-right" size={20} color={CORES.texto} />
+                </Pressable>
+              </View>
+              <View style={styles.atalhosPrazo}>
+                {[
+                  ...ATALHOS_PRAZO.map(({meses, rotulo}) => ({
+                    id: String(meses),
+                    rotulo,
+                    valor: mesesAFrente(hoje, meses),
+                  })),
+                  {id: 'sem', rotulo: 'Sem prazo', valor: null},
+                ].map(({id, rotulo, valor}) => {
+                  const selecionado = temMeta && prazo === valor;
+                  return (
+                    <Pressable
+                      key={id}
+                      onPress={() => mudarPrazo(valor)}
+                      disabled={prazoDesabilitado}
+                      accessibilityRole="button"
+                      accessibilityState={{
+                        disabled: prazoDesabilitado,
+                        selected: selecionado,
+                      }}
+                      accessibilityLabel={rotulo}
+                      testID={`cofre-prazo-atalho-${id}`}
+                      style={[
+                        styles.atalhoPrazo,
+                        selecionado && {
+                          backgroundColor: comAlfa(cor, 0.15),
+                          borderColor: cor,
+                        },
+                      ]}>
+                      <Text
+                        style={[
+                          styles.textoAtalho,
+                          selecionado && {color: cor},
+                        ]}>
+                        {rotulo}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+              {plano && (
+                <Text style={styles.previaPrazo} testID="cofre-prazo-previa">
+                  {previaDoPlano(plano)}
+                </Text>
+              )}
+              {erros.prazo && (
+                <HelperText type="error" testID="cofre-erro-prazo">
+                  {erros.prazo}
                 </HelperText>
               )}
             </View>
@@ -422,6 +563,55 @@ const styles = StyleSheet.create({
   },
   campo: {
     backgroundColor: CORES.superficie,
+  },
+  secaoDesabilitada: {
+    opacity: 0.4,
+  },
+  linhaPrazo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  setaPrazo: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: CORES.realceForte,
+  },
+  setaDesabilitada: {
+    opacity: 0.35,
+  },
+  mesPrazo: {
+    fontFamily: FONTES.seminegrito,
+    fontSize: 15,
+    color: CORES.texto,
+  },
+  atalhosPrazo: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 10,
+  },
+  atalhoPrazo: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    backgroundColor: CORES.realce,
+  },
+  textoAtalho: {
+    fontFamily: FONTES.medio,
+    fontSize: 12,
+    color: CORES.textoSecundario,
+  },
+  previaPrazo: {
+    marginTop: 10,
+    fontFamily: FONTES.monoMedio,
+    fontSize: 12,
+    color: CORES.texto,
   },
   previa: {
     flexDirection: 'row',

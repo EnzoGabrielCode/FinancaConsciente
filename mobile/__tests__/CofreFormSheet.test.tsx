@@ -111,6 +111,7 @@ describe('CofreFormSheet', () => {
       icone: '✈️',
       cor: '#64B5F6',
       metaCentavos: 800000,
+      prazo: null,
     });
   });
 
@@ -126,6 +127,7 @@ describe('CofreFormSheet', () => {
       icone: '💰',
       cor: '#39FF84',
       metaCentavos: null,
+      prazo: null,
     });
   });
 
@@ -184,6 +186,7 @@ describe('CofreFormSheet', () => {
       icone: '🏖️',
       cor: '#FFB74D',
       metaCentavos: 800000,
+      prazo: null,
       saldoCentavos: 120000,
     };
     await renderizar({cofre, nomesExistentes: ['Viagem', 'Carro']});
@@ -201,6 +204,170 @@ describe('CofreFormSheet', () => {
       icone: '🏖️',
       cor: '#FFB74D',
       metaCentavos: 800000,
+      prazo: null,
+    });
+  });
+  describe('prazo', () => {
+    const cofreComPrazo = (prazo: string | null, saldoCentavos = 0): Cofre => ({
+      id: 3,
+      nome: 'Viagem',
+      icone: '🏖️',
+      cor: '#FFB74D',
+      metaCentavos: 100000,
+      prazo,
+      saldoCentavos,
+    });
+
+    beforeEach(() => {
+      jest.setSystemTime(new Date(2026, 10, 7, 12));
+    });
+
+    const seta = (id: string) => interativo(id, 'onPress');
+    const estaDesabilitado = (id: string) =>
+      seta(id).props.accessibilityState.disabled;
+    const mes = () => textoDe(comId('cofre-prazo-mes')[0]);
+    const previa = () => textoDe(comId('cofre-prazo-previa')[0]);
+
+    async function comMeta(valor = '1000') {
+      await escrever('cofre-nome-input', 'Viagem');
+      await escrever('cofre-meta-input', valor);
+    }
+
+    it('sem meta a seção fica desabilitada', async () => {
+      await renderizar();
+
+      expect(mes()).toBe('Sem prazo');
+      for (const id of [
+        'cofre-prazo-anterior',
+        'cofre-prazo-proximo',
+        'cofre-prazo-atalho-3',
+        'cofre-prazo-atalho-sem',
+      ]) {
+        expect(estaDesabilitado(id)).toBe(true);
+      }
+      expect(comId('cofre-prazo-previa')).toHaveLength(0);
+    });
+
+    it('as setas mudam o mês e ‹ para no mês atual', async () => {
+      await renderizar();
+      await comMeta();
+      expect(estaDesabilitado('cofre-prazo-anterior')).toBe(true);
+
+      await tocar('cofre-prazo-proximo');
+      expect(mes()).toBe('dez. 2026');
+      expect(estaDesabilitado('cofre-prazo-anterior')).toBe(false);
+
+      await tocar('cofre-prazo-proximo');
+      expect(mes()).toBe('jan. 2027');
+
+      await tocar('cofre-prazo-anterior');
+      await tocar('cofre-prazo-anterior');
+      expect(mes()).toBe('nov. 2026');
+      expect(estaDesabilitado('cofre-prazo-anterior')).toBe(true);
+    });
+
+    it('os atalhos mudam o mês e "Sem prazo" limpa', async () => {
+      await renderizar();
+      await comMeta();
+
+      await tocar('cofre-prazo-atalho-3');
+      expect(mes()).toBe('fev. 2027');
+      await tocar('cofre-prazo-atalho-6');
+      expect(mes()).toBe('mai. 2027');
+      await tocar('cofre-prazo-atalho-12');
+      expect(mes()).toBe('nov. 2027');
+      await tocar('cofre-prazo-atalho-24');
+      expect(mes()).toBe('nov. 2028');
+
+      await tocar('cofre-prazo-atalho-sem');
+      expect(mes()).toBe('Sem prazo');
+      expect(comId('cofre-prazo-previa')).toHaveLength(0);
+    });
+
+    it('› para no limite de 30 anos', async () => {
+      await renderizar({cofre: cofreComPrazo('2056-11')});
+      expect(estaDesabilitado('cofre-prazo-proximo')).toBe(true);
+    });
+
+    it('a prévia acompanha a meta e o prazo', async () => {
+      await renderizar();
+      await comMeta('1200');
+
+      await tocar('cofre-prazo-atalho-3');
+      expect(previa()).toBe('Guarde R$ 300,00 por mês até fev. 2027');
+
+      await escrever('cofre-meta-input', '2400');
+      expect(previa()).toBe('Guarde R$ 600,00 por mês até fev. 2027');
+
+      await tocar('cofre-prazo-atalho-6');
+      expect(previa()).toBe('Guarde R$ 342,86 por mês até mai. 2027');
+    });
+
+    it('em curto prazo a prévia é por dia, com o último dia do mês', async () => {
+      await renderizar();
+      await comMeta('120');
+      await tocar('cofre-prazo-proximo');
+      await tocar('cofre-prazo-anterior');
+
+      expect(mes()).toBe('nov. 2026');
+      expect(previa()).toBe('Guarde R$ 5,00 por dia até 30 de nov.');
+    });
+
+    it('a prévia desconta o saldo atual do cofre', async () => {
+      await renderizar({cofre: cofreComPrazo('2027-01', 40000)});
+      expect(previa()).toBe('Guarde R$ 200,00 por mês até jan. 2027');
+
+      await tocar('cofre-prazo-atalho-3');
+      expect(previa()).toBe('Guarde R$ 150,00 por mês até fev. 2027');
+    });
+
+    it('apagar a meta limpa o prazo', async () => {
+      await renderizar();
+      await comMeta();
+      await tocar('cofre-prazo-atalho-3');
+
+      await escrever('cofre-meta-input', '');
+
+      expect(mes()).toBe('Sem prazo');
+      await tocar('cofre-form-salvar');
+      expect(criar).toHaveBeenCalledWith(
+        expect.objectContaining({metaCentavos: null, prazo: null}),
+      );
+    });
+
+    it('salvar envia o prazo', async () => {
+      await renderizar();
+      await comMeta();
+      await tocar('cofre-prazo-atalho-6');
+      await tocar('cofre-form-salvar');
+
+      expect(criar).toHaveBeenCalledWith(
+        expect.objectContaining({metaCentavos: 100000, prazo: '2027-05'}),
+      );
+    });
+
+    it('editar uma meta vencida mantém o prazo sem travar', async () => {
+      await renderizar({
+        cofre: cofreComPrazo('2026-09'),
+        nomesExistentes: ['Viagem'],
+      });
+      expect(mes()).toBe('set. 2026');
+      expect(estaDesabilitado('cofre-prazo-anterior')).toBe(true);
+
+      await escrever('cofre-nome-input', 'Viagem 2');
+      await tocar('cofre-form-salvar');
+
+      expect(criar).toHaveBeenCalledWith(
+        expect.objectContaining({nome: 'Viagem 2', prazo: '2026-09'}),
+      );
+    });
+
+    it('› numa meta vencida pula para o mês atual', async () => {
+      await renderizar({cofre: cofreComPrazo('2026-05')});
+
+      await tocar('cofre-prazo-proximo');
+
+      expect(mes()).toBe('nov. 2026');
     });
   });
 });

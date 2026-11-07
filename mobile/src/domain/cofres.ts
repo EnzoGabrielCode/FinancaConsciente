@@ -1,5 +1,7 @@
+import {anoMesDe, anoMesValido} from './datas';
 import {formatarCentavos} from './dinheiro';
 import type {Cofre, DadosCofre, TipoMovimento} from './entities/Cofre';
+import {MAX_ANOS_PRAZO, mesesAFrente, totalMensalDasMetas} from './metas';
 
 export const MAX_NOME_COFRE = 30;
 
@@ -41,9 +43,35 @@ export interface ResultadoValidacaoCofre {
 
 const normalizarNome = (nome: string) => nome.trim().toLocaleLowerCase();
 
+function validarPrazo(
+  {prazo, metaCentavos}: DadosCofre,
+  hoje: string,
+  prazoAnterior: string | null,
+): string | null {
+  if (prazo === null) {
+    return null;
+  }
+  if (metaCentavos === null) {
+    return 'Defina o valor da meta para escolher um prazo.';
+  }
+  if (!anoMesValido(prazo)) {
+    return 'Escolha um mês válido para o prazo.';
+  }
+  // Mantém o prazo vencido: senão não daria para nem renomear a meta.
+  if (prazo < anoMesDe(hoje) && prazo !== prazoAnterior) {
+    return 'O prazo não pode ser antes do mês atual.';
+  }
+  if (prazo > mesesAFrente(hoje, MAX_ANOS_PRAZO * 12)) {
+    return `O prazo pode ser de até ${MAX_ANOS_PRAZO} anos.`;
+  }
+  return null;
+}
+
 export function validarCofre(
   dados: DadosCofre,
   nomesExistentes: string[],
+  hoje: string,
+  prazoAnterior: string | null = null,
 ): ResultadoValidacaoCofre {
   const erros: ErrosCofre = {};
   const nome = dados.nome.trim();
@@ -73,6 +101,11 @@ export function validarCofre(
     (!Number.isInteger(dados.metaCentavos) || dados.metaCentavos <= 0)
   ) {
     erros.metaCentavos = 'A meta precisa ser maior que zero.';
+  }
+
+  const erroPrazo = validarPrazo(dados, hoje, prazoAnterior);
+  if (erroPrazo) {
+    erros.prazo = erroPrazo;
   }
 
   return {
@@ -128,9 +161,10 @@ export interface ResumoCofres {
   totalMetasCentavos: number;
   progressoGeral: number | null;
   quantidade: number;
+  totalMensalMetasCentavos: number;
 }
 
-export function resumoCofres(cofres: Cofre[]): ResumoCofres {
+export function resumoCofres(cofres: Cofre[], hoje: string): ResumoCofres {
   const comMeta = cofres.filter(
     (cofre): cofre is Cofre & {metaCentavos: number} =>
       cofre.metaCentavos !== null && cofre.metaCentavos > 0,
@@ -153,5 +187,6 @@ export function resumoCofres(cofres: Cofre[]): ResumoCofres {
     progressoGeral:
       totalMetasCentavos > 0 ? guardadoComMeta / totalMetasCentavos : null,
     quantidade: cofres.length,
+    totalMensalMetasCentavos: totalMensalDasMetas(cofres, hoje),
   };
 }

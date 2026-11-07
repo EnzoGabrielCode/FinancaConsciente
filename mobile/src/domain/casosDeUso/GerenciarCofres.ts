@@ -1,5 +1,6 @@
 import {validarCofre, validarMovimento} from '../cofres';
 import {hojeISO} from '../datas';
+import {totalMensalDasMetas} from '../metas';
 import type {DadosCofre, TipoMovimento} from '../entities/Cofre';
 import type {CofreRepository} from '../repositories/CofreRepository';
 import type {TransacaoRepository} from '../repositories/TransacaoRepository';
@@ -16,6 +17,10 @@ export class GerenciarCofres {
       this.cofres.totalGuardado(),
     ]);
     return saldo - guardado;
+  }
+
+  async totalMensalMetas(hoje: string = hojeISO()): Promise<number> {
+    return totalMensalDasMetas(await this.cofres.listar(), hoje);
   }
 
   async criar(dados: DadosCofre): Promise<number> {
@@ -48,6 +53,8 @@ export class GerenciarCofres {
     const resultado = validarCofre(
       dados,
       existentes.filter(cofre => cofre.id !== idEmEdicao).map(c => c.nome),
+      hojeISO(),
+      existentes.find(cofre => cofre.id === idEmEdicao)?.prazo ?? null,
     );
     if (!resultado.valido) {
       throw new Error(Object.values(resultado.erros)[0]);
