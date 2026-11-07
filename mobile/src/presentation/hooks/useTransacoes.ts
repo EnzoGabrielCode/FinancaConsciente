@@ -38,6 +38,7 @@ export function useTransacoes(
   repositorio: TransacaoRepository,
   armazenamento: ArmazenamentoComprovantes,
   cofres?: CofreRepository,
+  aoSalvarDespesa?: (categoria: string, data: string) => Promise<void>,
 ): UseTransacoes {
   const lancamentos = useMemo(
     () => new LancamentosComComprovante(repositorio, armazenamento),
@@ -51,6 +52,8 @@ export function useTransacoes(
   });
   const montado = useRef(true);
   const ultimaCarga = useRef(0);
+  const aoSalvarDespesaRef = useRef(aoSalvarDespesa);
+  aoSalvarDespesaRef.current = aoSalvarDespesa;
 
   useEffect(() => {
     montado.current = true;
@@ -118,20 +121,34 @@ export function useTransacoes(
     return () => assinatura.remove();
   }, [recarregar]);
 
+  // Sem await: o aviso não pode segurar o fechamento do sheet nem falhar o salvar.
+  const avisarDespesa = useCallback(
+    ({tipo, categoria, data}: DadosTransacao) => {
+      if (tipo === 'despesa') {
+        Promise.resolve()
+          .then(() => aoSalvarDespesaRef.current?.(categoria, data))
+          .catch(() => {});
+      }
+    },
+    [],
+  );
+
   const criar = useCallback(
     async (dados: DadosTransacao) => {
       await lancamentos.criar(dados);
       await recarregar();
+      avisarDespesa(dados);
     },
-    [lancamentos, recarregar],
+    [lancamentos, recarregar, avisarDespesa],
   );
 
   const atualizar = useCallback(
     async (id: number, dados: DadosTransacao) => {
       await lancamentos.atualizar(id, dados);
       await recarregar();
+      avisarDespesa(dados);
     },
-    [lancamentos, recarregar],
+    [lancamentos, recarregar, avisarDespesa],
   );
 
   const excluir = useCallback(

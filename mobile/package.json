@@ -10,6 +10,7 @@
     "test": "jest"
   },
   "dependencies": {
+    "@notifee/react-native": "^9.1.8",
     "@shopify/flash-list": "^1.8.3",
     "react": "18.2.0",
     "react-native": "0.73.11",

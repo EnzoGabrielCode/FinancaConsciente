@@ -7,6 +7,7 @@ import {
   runMigrations,
   type Migration,
 } from '../src/data/database/migrations';
+import {criarBancoReal} from '../test-utils/bancoReal';
 
 type MockDatabase = SQLiteDatabase & {userVersion: number; executed: string[]};
 
@@ -145,7 +146,6 @@ describe('runMigrations', () => {
   it('a migração v5 só cria o índice de duplicatas e um banco na v4 roda só a v5', async () => {
     const v5 = MIGRATIONS[4];
     expect(v5.version).toBe(5);
-    expect(LATEST_VERSION).toBe(5);
     expect(v5.statements).toEqual([
       'CREATE INDEX IF NOT EXISTS idx_transacoes_duplicatas ON transacoes (tipo, valor_centavos, data)',
     ]);
@@ -156,12 +156,80 @@ describe('runMigrations', () => {
     ).not.toMatch(/idx_transacoes_duplicatas/);
 
     const db = createDb(4);
-    await expect(runMigrations(db)).resolves.toBe(5);
+    await expect(runMigrations(db, MIGRATIONS.slice(0, 5))).resolves.toBe(5);
     expect(db.userVersion).toBe(5);
     expect(db.executed).toEqual([
       'PRAGMA user_version',
       ...v5.statements,
       'PRAGMA user_version = 5',
     ]);
+  });
+});
+
+describe('migração v6: orçamentos', () => {
+  const inserirOrcamento = (
+    db: SQLiteDatabase,
+    categoria: string,
+    limite: number,
+  ) =>
+    db.executeSql(
+      'INSERT INTO orcamentos (categoria, limite_centavos) VALUES (?, ?)',
+      [categoria, limite],
+    );
+
+  async function bancoMigrado() {
+    const db = criarBancoReal();
+    await runMigrations(db);
+    return db;
+  }
+
+  it('cria as tabelas e o índice da soma do mês', async () => {
+    expect(LATEST_VERSION).toBe(6);
+    const db = await bancoMigrado();
+    const [resultado] = await db.executeSql(
+      "SELECT name FROM sqlite_master WHERE name IN ('orcamentos', 'alertas_orcamento', 'idx_transacoes_orcamento')",
+    );
+    expect(resultado.rows.length).toBe(3);
+  });
+
+  it('atualiza um banco que já estava na v5', async () => {
+    const db = criarBancoReal();
+    await runMigrations(db, MIGRATIONS.slice(0, 5));
+    await expect(runMigrations(db)).resolves.toBe(6);
+    await expect(inserirOrcamento(db, 'lazer', 1000)).resolves.toBeDefined();
+  });
+
+  it('preenche criado_em e atualizado_em no formato das outras tabelas', async () => {
+    const db = await bancoMigrado();
+    await inserirOrcamento(db, 'lazer', 1000);
+    const [resultado] = await db.executeSql(
+      'SELECT criado_em, atualizado_em FROM orcamentos',
+    );
+    const linha = resultado.rows.item(0);
+    expect(linha.criado_em).toMatch(/^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/);
+    expect(linha.atualizado_em).toMatch(/^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/);
+  });
+
+  it('rejeita limite zero, negativo e quebrado', async () => {
+    const db = await bancoMigrado();
+    await expect(inserirOrcamento(db, 'lazer', 0)).rejects.toThrow(/CHECK/);
+    await expect(inserirOrcamento(db, 'lazer', -1)).rejects.toThrow(/CHECK/);
+    await expect(inserirOrcamento(db, 'lazer', 10.5)).rejects.toThrow(/CHECK/);
+  });
+
+  it('rejeita categoria repetida', async () => {
+    const db = await bancoMigrado();
+    await inserirOrcamento(db, 'lazer', 1000);
+    await expect(inserirOrcamento(db, 'lazer', 2000)).rejects.toThrow(/UNIQUE/);
+  });
+
+  it('só aceita alertas de nível 80 e 100', async () => {
+    const db = await bancoMigrado();
+    await expect(
+      db.executeSql(
+        'INSERT INTO alertas_orcamento (categoria, ano_mes, nivel) VALUES (?, ?, ?)',
+        ['lazer', '2026-11', 50],
+      ),
+    ).rejects.toThrow(/CHECK/);
   });
 });

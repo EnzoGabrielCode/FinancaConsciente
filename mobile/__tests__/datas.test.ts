@@ -3,6 +3,8 @@ import {describe, expect, it} from '@jest/globals';
 import {
   anoMesDe,
   formatarCabecalhoDia,
+  nomeMesAno,
+  ultimoDiaDoMes,
   formatarDataAmigavel,
   mesesAte,
   rotuloMes,
@@ -124,5 +126,21 @@ describe('formatarCabecalhoDia', () => {
 
   it('inclui o ano quando é outro ano', () => {
     expect(formatarCabecalhoDia('2025-12-30', hoje)).toBe('30 de dez. de 2025');
+  });
+});
+
+describe('ultimoDiaDoMes', () => {
+  it('considera meses de 30 e 31 dias e o ano bissexto', () => {
+    expect(ultimoDiaDoMes('2026-11')).toBe('2026-11-30');
+    expect(ultimoDiaDoMes('2026-12')).toBe('2026-12-31');
+    expect(ultimoDiaDoMes('2026-02')).toBe('2026-02-28');
+    expect(ultimoDiaDoMes('2028-02')).toBe('2028-02-29');
+  });
+});
+
+describe('nomeMesAno', () => {
+  it('escreve o mês por extenso com o ano', () => {
+    expect(nomeMesAno('2026-11')).toBe('Novembro 2026');
+    expect(nomeMesAno('2026-03')).toBe('Março 2026');
   });
 });

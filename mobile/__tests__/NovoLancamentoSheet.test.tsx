@@ -24,6 +24,8 @@ import type {CofreRepository} from '../src/domain/repositories/CofreRepository';
 import type {TransacaoRepository} from '../src/domain/repositories/TransacaoRepository';
 import AlertaDuplicataDialog from '../src/presentation/components/AlertaDuplicataDialog';
 import NovoLancamentoSheet from '../src/presentation/components/NovoLancamentoSheet';
+import type {Notificador} from '../src/domain/repositories/Notificador';
+import type {OrcamentoRepository} from '../src/domain/repositories/OrcamentoRepository';
 import HomeScreen from '../src/presentation/screens/HomeScreen';
 import type {
   ImagemSelecionada,
@@ -46,6 +48,16 @@ class RepositorioEmMemoria implements TransacaoRepository {
       .sort((a, b) => b.data.localeCompare(a.data) || b.id - a.id)
       .slice(0, limite),
   );
+
+  gastosPorCategoria = jest.fn(async (anoMes: string) => {
+    const gastos: Record<string, number> = {};
+    for (const {tipo, data, categoria, valorCentavos} of this.transacoes) {
+      if (tipo === 'despesa' && data.startsWith(anoMes)) {
+        gastos[categoria] = (gastos[categoria] ?? 0) + valorCentavos;
+      }
+    }
+    return gastos;
+  });
 
   listarPagina = jest.fn(async (limite: number, deslocamento: number) =>
     [...this.transacoes]
@@ -231,6 +243,18 @@ let armazenamento: ArmazenamentoFake;
 let cofresRepo: CofresEmMemoria;
 let seletor: ReturnType<typeof criarSeletorFake>;
 
+const orcamentosRepo: OrcamentoRepository = {
+  listar: async () => [],
+  salvar: async () => {},
+  excluir: async () => {},
+  registrarAlerta: async () => true,
+};
+
+const notificador: Notificador = {
+  pedirPermissao: async () => true,
+  notificar: async () => {},
+};
+
 async function renderizar(repositorio: TransacaoRepository) {
   await act(async () => {
     tree = renderer.create(
@@ -239,6 +263,8 @@ async function renderizar(repositorio: TransacaoRepository) {
           repositorio={repositorio}
           armazenamento={armazenamento}
           repositorioCofres={cofresRepo}
+          repositorioOrcamentos={orcamentosRepo}
+          notificador={notificador}
           seletorImagem={seletor}
         />
       </PaperProvider>,
@@ -991,6 +1017,70 @@ describe('HomeScreen: dashboard', () => {
     });
 
     expect(textoDe(porId('saldo-atual'))).toBe('R$ -89,90');
+  });
+});
+
+describe('HomeScreen: orçamentos', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    armazenamento = new ArmazenamentoFake();
+    cofresRepo = new CofresEmMemoria();
+    seletor = criarSeletorFake();
+    jest
+      .spyOn(orcamentosRepo, 'listar')
+      .mockResolvedValue([
+        {id: 1, categoria: 'alimentacao', limiteCentavos: 10000},
+      ]);
+  });
+
+  afterEach(async () => {
+    await act(async () => {
+      jest.runOnlyPendingTimers();
+      tree.unmount();
+    });
+    jest.restoreAllMocks();
+    jest.useRealTimers();
+  });
+
+  async function lancarDespesa() {
+    await tocar('botao-novo-lancamento');
+    await digitar('8', '9', ',', '9', '0');
+    await tocar('categoria-alimentacao');
+    await tocar('botao-salvar');
+    await act(async () => {
+      jest.advanceTimersByTime(0);
+    });
+  }
+
+  it('avisa ao salvar uma despesa que passa de 80% e atualiza a tela', async () => {
+    const notificar = jest.spyOn(notificador, 'notificar');
+    await renderizar(new RepositorioEmMemoria());
+
+    await lancarDespesa();
+
+    expect(notificar).toHaveBeenCalledTimes(1);
+    expect(notificar).toHaveBeenCalledWith(
+      'Atenção: orçamento de Alimentação',
+      'Você já usou 89% do limite do mês. Restam R$ 10,10.',
+    );
+
+    await tocar('aba-planejamento');
+    expect(textoDe(porId('orcamento-gasto-alimentacao'))).toBe(
+      'Gasto: R$ 89,90 / R$ 100,00',
+    );
+  });
+
+  it('salva a despesa mesmo se a notificação falhar', async () => {
+    jest
+      .spyOn(notificador, 'notificar')
+      .mockRejectedValue(new Error('sem canal'));
+    const repositorio = new RepositorioEmMemoria();
+    await renderizar(repositorio);
+
+    await lancarDespesa();
+
+    expect(repositorio.criar).toHaveBeenCalledTimes(1);
+    expect(textoDe(porId('home-snackbar'))).toContain('Despesa salva');
   });
 });
 

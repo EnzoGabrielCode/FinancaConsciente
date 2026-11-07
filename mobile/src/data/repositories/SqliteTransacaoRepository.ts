@@ -1,6 +1,6 @@
 import type {ResultSet, SQLiteDatabase} from 'react-native-sqlite-storage';
 
-import {dataISOValida} from '../../domain/datas';
+import {dataISOValida, ultimoDiaDoMes} from '../../domain/datas';
 import type {TotaisMes} from '../../domain/entities/Dashboard';
 import type {CandidataDuplicata} from '../../domain/entities/Duplicata';
 import type {
@@ -43,6 +43,11 @@ interface LinhaTotaisMes {
   ano_mes: string;
   receitas: number | string | null;
   despesas: number | string | null;
+}
+
+interface LinhaGastoCategoria {
+  categoria: string;
+  total: number | string | null;
 }
 
 const ANO_MES = /^\d{4}-\d{2}$/;
@@ -188,6 +193,22 @@ export class SqliteTransacaoRepository implements TransacaoRepository {
       receitasCentavos: Number(linha.receitas ?? 0),
       despesasCentavos: Number(linha.despesas ?? 0),
     }));
+  }
+
+  async gastosPorCategoria(anoMes: string): Promise<Record<string, number>> {
+    validarAnoMes(anoMes);
+    const resultado = await this.executar(
+      `SELECT categoria, SUM(valor_centavos) AS total
+        FROM transacoes
+        WHERE tipo = 'despesa' AND data BETWEEN ? AND ?
+        GROUP BY categoria`,
+      [`${anoMes}-01`, ultimoDiaDoMes(anoMes)],
+    );
+    const gastos: Record<string, number> = {};
+    for (const linha of linhas<LinhaGastoCategoria>(resultado)) {
+      gastos[linha.categoria] = Number(linha.total ?? 0);
+    }
+    return gastos;
   }
 
   async buscarCandidatasDuplicata(

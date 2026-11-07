@@ -15,6 +15,7 @@ export interface TransacaoRepository {
   excluir(id: number): Promise<void>;
   saldoAte(dataISO: string): Promise<number>;
   totaisPorMes(deAnoMes: string, ateAnoMes: string): Promise<TotaisMes[]>;
+  gastosPorCategoria(anoMes: string): Promise<Record<string, number>>;
   buscarCandidatasDuplicata(
     tipo: TipoTransacao,
     valorCentavos: number,

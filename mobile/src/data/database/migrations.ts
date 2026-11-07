@@ -72,6 +72,28 @@ export const MIGRATIONS: Migration[] = [
       'CREATE INDEX IF NOT EXISTS idx_transacoes_duplicatas ON transacoes (tipo, valor_centavos, data)',
     ],
   },
+  {
+    version: 6,
+    description: 'Cria orçamentos por categoria',
+    statements: [
+      `CREATE TABLE IF NOT EXISTS orcamentos (
+        id              INTEGER PRIMARY KEY AUTOINCREMENT,
+        categoria       TEXT    NOT NULL UNIQUE,
+        limite_centavos INTEGER NOT NULL
+                                CHECK (typeof(limite_centavos) = 'integer' AND limite_centavos > 0),
+        criado_em       TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+        atualizado_em   TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+      )`,
+      `CREATE TABLE IF NOT EXISTS alertas_orcamento (
+        categoria TEXT    NOT NULL,
+        ano_mes   TEXT    NOT NULL,
+        nivel     INTEGER NOT NULL CHECK (nivel IN (80, 100)),
+        criado_em TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+        PRIMARY KEY (categoria, ano_mes, nivel)
+      )`,
+      'CREATE INDEX IF NOT EXISTS idx_transacoes_orcamento ON transacoes (tipo, categoria, data)',
+    ],
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

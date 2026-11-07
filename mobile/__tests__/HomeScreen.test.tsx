@@ -7,6 +7,8 @@ import renderer, {act, type ReactTestRenderer} from 'react-test-renderer';
 import type {Transacao} from '../src/domain/entities/Transacao';
 import type {ArmazenamentoComprovantes} from '../src/domain/repositories/ArmazenamentoComprovantes';
 import type {CofreRepository} from '../src/domain/repositories/CofreRepository';
+import type {Notificador} from '../src/domain/repositories/Notificador';
+import type {OrcamentoRepository} from '../src/domain/repositories/OrcamentoRepository';
 import type {TransacaoRepository} from '../src/domain/repositories/TransacaoRepository';
 import HomeScreen from '../src/presentation/screens/HomeScreen';
 import {darkTheme} from '../src/presentation/theme';
@@ -15,6 +17,7 @@ import {darkTheme} from '../src/presentation/theme';
 const repositorio: TransacaoRepository = {
   listarRecentes: async () => [],
   listarPagina: async () => [],
+  gastosPorCategoria: async () => ({}),
   buscarPorId: async () => null,
   criar: async () => 1,
   atualizar: async () => {},
@@ -35,6 +38,18 @@ const repositorioCofres: CofreRepository = {
   totalGuardado: async () => 0,
 };
 
+const repositorioOrcamentos: OrcamentoRepository = {
+  listar: async () => [],
+  salvar: async () => {},
+  excluir: async () => {},
+  registrarAlerta: async () => true,
+};
+
+const notificador: Notificador = {
+  pedirPermissao: async () => true,
+  notificar: async () => {},
+};
+
 const armazenamento: ArmazenamentoComprovantes = {
   guardar: async uri => uri,
   apagar: async () => {},
@@ -51,6 +66,8 @@ async function renderizar(repositorioTela = repositorio) {
           repositorio={repositorioTela}
           armazenamento={armazenamento}
           repositorioCofres={repositorioCofres}
+          repositorioOrcamentos={repositorioOrcamentos}
+          notificador={notificador}
         />
       </PaperProvider>,
     );
@@ -94,10 +111,24 @@ describe('HomeScreen: barra de navegação', () => {
     expect(temTexto('Disponível em breve')).toBe(false);
 
     await act(async () => {
-      aba('aba-planejamento').props.onPress();
+      aba('aba-desafios').props.onPress();
     });
 
     expect(temTexto('Disponível em breve')).toBe(true);
+  });
+
+  it('a aba Planejamento abre a tela Orçamentos', async () => {
+    await renderizar();
+    const telaOrcamentos = () =>
+      tree.root.findAll(no => no.props.testID === 'orcamentos-screen');
+    expect(telaOrcamentos()).toHaveLength(0);
+
+    await act(async () => {
+      aba('aba-planejamento').props.onPress();
+    });
+
+    expect(telaOrcamentos().length).toBeGreaterThan(0);
+    expect(temTexto('Disponível em breve')).toBe(false);
   });
 });
 

@@ -46,6 +46,21 @@ export function formatarDataAmigavel(
     : `${dia}/${mes}/${ano}`;
 }
 
+const NOMES_MES = [
+  'Janeiro',
+  'Fevereiro',
+  'Março',
+  'Abril',
+  'Maio',
+  'Junho',
+  'Julho',
+  'Agosto',
+  'Setembro',
+  'Outubro',
+  'Novembro',
+  'Dezembro',
+];
+
 const ROTULOS_MES = [
   'jan',
   'fev',
@@ -90,6 +105,17 @@ export function ultimoDiaDoMesAnterior(anoMes: string): string {
   const [ano, mes] = separarAnoMes(anoMes);
   const ultimoDia = new Date(Date.UTC(ano, mes - 1, 0)).getUTCDate();
   return `${mesesAte(anoMes, 2)[0]}-${doisDigitos(ultimoDia)}`;
+}
+
+export function ultimoDiaDoMes(anoMes: string): string {
+  const [ano, mes] = separarAnoMes(anoMes);
+  const ultimoDia = new Date(Date.UTC(ano, mes, 0)).getUTCDate();
+  return `${anoMes}-${doisDigitos(ultimoDia)}`;
+}
+
+export function nomeMesAno(anoMes: string): string {
+  const [ano, mes] = separarAnoMes(anoMes);
+  return `${NOMES_MES[mes - 1] ?? ''} ${ano}`;
 }
 
 export function rotuloMes(anoMes: string): string {

@@ -8,4 +8,8 @@ jest.mock('react-native-image-picker');
 
 jest.mock('react-native-fs');
 
+jest.mock('@notifee/react-native', () =>
+  require('@notifee/react-native/jest-mock'),
+);
+
 require('@shopify/flash-list/jestSetup');

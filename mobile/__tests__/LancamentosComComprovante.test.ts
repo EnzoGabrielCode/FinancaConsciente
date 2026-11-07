@@ -18,6 +18,8 @@ class RepositorioFake implements TransacaoRepository {
     this.transacoes.slice(deslocamento, deslocamento + limite),
   );
 
+  gastosPorCategoria = jest.fn(async () => ({}));
+
   buscarPorId = jest.fn(
     async (id: number) => this.transacoes.find(t => t.id === id) ?? null,
   );

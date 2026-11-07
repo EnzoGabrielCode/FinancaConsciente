@@ -1,4 +1,4 @@
-import React, {useMemo, useState} from 'react';
+import React, {useCallback, useMemo, useState} from 'react';
 import {
   Pressable,
   RefreshControl,
@@ -21,10 +21,13 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
 import {DATABASE_NAME} from '../../data/database/connection';
 import {GerenciarCofres} from '../../domain/casosDeUso/GerenciarCofres';
-import {saudacao} from '../../domain/datas';
+import {GerenciarOrcamentos} from '../../domain/casosDeUso/GerenciarOrcamentos';
+import {hojeISO, saudacao} from '../../domain/datas';
 import type {DadosTransacao, Transacao} from '../../domain/entities/Transacao';
 import type {ArmazenamentoComprovantes} from '../../domain/repositories/ArmazenamentoComprovantes';
 import type {CofreRepository} from '../../domain/repositories/CofreRepository';
+import type {Notificador} from '../../domain/repositories/Notificador';
+import type {OrcamentoRepository} from '../../domain/repositories/OrcamentoRepository';
 import type {TransacaoRepository} from '../../domain/repositories/TransacaoRepository';
 import CardSaldo from '../components/CardSaldo';
 import CofreMiniCard from '../components/CofreMiniCard';
@@ -33,6 +36,7 @@ import NovoLancamentoSheet from '../components/NovoLancamentoSheet';
 import TransacaoItem from '../components/TransacaoItem';
 import {useCofres} from '../hooks/useCofres';
 import {useDatabase} from '../hooks/useDatabase';
+import {useOrcamentos} from '../hooks/useOrcamentos';
 import {useTransacoes} from '../hooks/useTransacoes';
 import type {SeletorImagem} from '../servicos/seletorImagem';
 import {CORES} from '../theme/cores';
@@ -41,6 +45,7 @@ import {FONTES} from '../theme/fontes';
 import {ESTILO_SNACKBAR, TEMA_SNACKBAR} from '../theme';
 import {mensagemDeErro} from '../utils/mensagemDeErro';
 import CofresScreen from './CofresScreen';
+import OrcamentosScreen from './OrcamentosScreen';
 import TransacoesScreen from './TransacoesScreen';
 
 function DatabaseIcon(props: {size: number}): React.JSX.Element {
@@ -51,6 +56,8 @@ interface Props {
   repositorio: TransacaoRepository;
   armazenamento: ArmazenamentoComprovantes;
   repositorioCofres: CofreRepository;
+  repositorioOrcamentos: OrcamentoRepository;
+  notificador: Notificador;
   seletorImagem?: SeletorImagem;
 }
 
@@ -86,16 +93,31 @@ function HomeScreen({
   repositorio,
   armazenamento,
   repositorioCofres,
+  repositorioOrcamentos,
+  notificador,
   seletorImagem,
 }: Props): React.JSX.Element {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const database = useDatabase();
+  const gerenciarOrcamentos = useMemo(
+    () =>
+      new GerenciarOrcamentos(repositorioOrcamentos, repositorio, notificador),
+    [repositorioOrcamentos, repositorio, notificador],
+  );
+  const verificarAlerta = useCallback(
+    async (categoria: string, data: string) => {
+      await gerenciarOrcamentos.verificarAlerta(categoria, data, hojeISO());
+    },
+    [gerenciarOrcamentos],
+  );
   const lancamentos = useTransacoes(
     repositorio,
     armazenamento,
     repositorioCofres,
+    verificarAlerta,
   );
+  const orcamentos = useOrcamentos(gerenciarOrcamentos, lancamentos.transacoes);
   const gerenciarCofres = useMemo(
     () => new GerenciarCofres(repositorioCofres, repositorio),
     [repositorioCofres, repositorio],
@@ -110,6 +132,7 @@ function HomeScreen({
     abrirFormulario: false,
   });
   const [telaTransacoes, setTelaTransacoes] = useState(false);
+  const [telaOrcamentos, setTelaOrcamentos] = useState(false);
 
   const [sheet, setSheet] = useState<EstadoSheet>({
     visivel: false,
@@ -179,13 +202,18 @@ function HomeScreen({
   const abrirCofres = (abrirFormulario = false) =>
     setTelaCofres({visivel: true, abrirFormulario});
 
+  const tocarAba = (aba: Aba) =>
+    aba.id === 'planejamento'
+      ? setTelaOrcamentos(true)
+      : setAviso('Disponível em breve');
+
   const renderizarAba = (aba: Aba) => {
     const ativa = aba.id === ABA_ATIVA;
     const cor = ativa ? CORES.verde : CORES.textoApagado;
     return (
       <Pressable
         key={aba.id}
-        onPress={ativa ? undefined : () => setAviso('Disponível em breve')}
+        onPress={ativa ? undefined : () => tocarAba(aba)}
         accessibilityRole="tab"
         accessibilityState={{selected: ativa}}
         accessibilityLabel={aba.nome}
@@ -425,6 +453,12 @@ function HomeScreen({
         seletorImagem={seletorImagem}
         onAlterado={cofres.recarregar}
         onFechar={() => setTelaTransacoes(false)}
+      />
+
+      <OrcamentosScreen
+        visivel={telaOrcamentos}
+        orcamentos={orcamentos}
+        onFechar={() => setTelaOrcamentos(false)}
       />
     </View>
   );
