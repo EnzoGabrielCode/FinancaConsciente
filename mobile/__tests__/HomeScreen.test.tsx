@@ -4,6 +4,7 @@ import {afterEach, beforeEach, describe, expect, it, jest} from '@jest/globals';
 import {PaperProvider} from 'react-native-paper';
 import renderer, {act, type ReactTestRenderer} from 'react-test-renderer';
 
+import type {Transacao} from '../src/domain/entities/Transacao';
 import type {ArmazenamentoComprovantes} from '../src/domain/repositories/ArmazenamentoComprovantes';
 import type {CofreRepository} from '../src/domain/repositories/CofreRepository';
 import type {TransacaoRepository} from '../src/domain/repositories/TransacaoRepository';
@@ -13,6 +14,7 @@ import {darkTheme} from '../src/presentation/theme';
 // Repositórios vazios em memória: a barra não depende dos dados.
 const repositorio: TransacaoRepository = {
   listarRecentes: async () => [],
+  listarPagina: async () => [],
   buscarPorId: async () => null,
   criar: async () => 1,
   atualizar: async () => {},
@@ -41,12 +43,12 @@ const armazenamento: ArmazenamentoComprovantes = {
 
 let tree: ReactTestRenderer;
 
-async function renderizar() {
+async function renderizar(repositorioTela = repositorio) {
   await act(async () => {
     tree = renderer.create(
       <PaperProvider theme={darkTheme}>
         <HomeScreen
-          repositorio={repositorio}
+          repositorio={repositorioTela}
           armazenamento={armazenamento}
           repositorioCofres={repositorioCofres}
         />
@@ -96,5 +98,73 @@ describe('HomeScreen: barra de navegação', () => {
     });
 
     expect(temTexto('Disponível em breve')).toBe(true);
+  });
+});
+
+describe('HomeScreen: últimas transações', () => {
+  const transacoes: Transacao[] = Array.from({length: 8}, (_, i) => ({
+    id: i + 1,
+    tipo: 'despesa',
+    descricao: `Lançamento ${i + 1}`,
+    valorCentavos: 1000,
+    data: '2026-10-01',
+    categoria: 'outros',
+    recorrencia: 'variavel',
+    comprovanteUri: null,
+    sincronizado: false,
+  }));
+  const repositorioCheio: TransacaoRepository = {
+    ...repositorio,
+    listarRecentes: async limite => transacoes.slice(0, limite),
+    listarPagina: async (limite, deslocamento) =>
+      transacoes.slice(deslocamento, deslocamento + limite),
+  };
+
+  const itensNaTela = () =>
+    tree.root.findAll(
+      no =>
+        typeof no.type === 'string' &&
+        /^transacao-\d+$/.test(String(no.props.testID)),
+    );
+  const verTodas = () =>
+    tree.root.findAll(
+      no =>
+        no.props.testID === 'botao-ver-todas' &&
+        no.props.accessibilityRole === 'button',
+    );
+  const telaTransacoes = () =>
+    tree.root.findAll(no => no.props.testID === 'transacoes-screen');
+
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+
+  afterEach(async () => {
+    await act(async () => {
+      jest.runOnlyPendingTimers();
+      tree.unmount();
+    });
+    jest.useRealTimers();
+  });
+
+  it('mostra no máximo 5 transações', async () => {
+    await renderizar(repositorioCheio);
+    expect(itensNaTela()).toHaveLength(5);
+  });
+
+  it('esconde "Ver todas" quando não há transações', async () => {
+    await renderizar();
+    expect(verTodas()).toHaveLength(0);
+  });
+
+  it('"Ver todas" abre a tela de transações', async () => {
+    await renderizar(repositorioCheio);
+    expect(telaTransacoes()).toHaveLength(0);
+
+    await act(async () => {
+      verTodas()[0].props.onPress();
+    });
+
+    expect(telaTransacoes().length).toBeGreaterThan(0);
   });
 });

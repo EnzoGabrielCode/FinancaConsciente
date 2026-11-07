@@ -47,6 +47,12 @@ class RepositorioEmMemoria implements TransacaoRepository {
       .slice(0, limite),
   );
 
+  listarPagina = jest.fn(async (limite: number, deslocamento: number) =>
+    [...this.transacoes]
+      .sort((a, b) => b.data.localeCompare(a.data) || b.id - a.id)
+      .slice(deslocamento, deslocamento + limite),
+  );
+
   buscarPorId = jest.fn(
     async (id: number) => this.transacoes.find(t => t.id === id) ?? null,
   );

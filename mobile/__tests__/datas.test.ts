@@ -2,6 +2,7 @@ import {describe, expect, it} from '@jest/globals';
 
 import {
   anoMesDe,
+  formatarCabecalhoDia,
   formatarDataAmigavel,
   mesesAte,
   rotuloMes,
@@ -105,5 +106,23 @@ describe('formatarDataAmigavel', () => {
     expect(formatarDataAmigavel('2027-01-02', dia(2026, 10, 4))).toBe(
       '02/01/2027',
     );
+  });
+});
+
+describe('formatarCabecalhoDia', () => {
+  const hoje = new Date(2026, 9, 14);
+
+  it('usa Hoje e Ontem como a data amigável', () => {
+    expect(formatarCabecalhoDia('2026-10-14', hoje)).toBe('Hoje');
+    expect(formatarCabecalhoDia('2026-10-13', hoje)).toBe('Ontem');
+  });
+
+  it('escreve dia e mês abreviado, sem zero à esquerda', () => {
+    expect(formatarCabecalhoDia('2026-10-12', hoje)).toBe('12 de out.');
+    expect(formatarCabecalhoDia('2026-03-05', hoje)).toBe('5 de mar.');
+  });
+
+  it('inclui o ano quando é outro ano', () => {
+    expect(formatarCabecalhoDia('2025-12-30', hoje)).toBe('30 de dez. de 2025');
   });
 });

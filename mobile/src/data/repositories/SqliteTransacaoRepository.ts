@@ -81,6 +81,25 @@ export class SqliteTransacaoRepository implements TransacaoRepository {
     return linhas<LinhaTransacao>(resultado).map(paraTransacao);
   }
 
+  async listarPagina(
+    limite: number,
+    deslocamento: number,
+  ): Promise<Transacao[]> {
+    if (!Number.isInteger(limite) || limite <= 0) {
+      throw new Error(`Limite inválido: ${limite}. Use um inteiro positivo.`);
+    }
+    if (!Number.isInteger(deslocamento) || deslocamento < 0) {
+      throw new Error(
+        `Deslocamento inválido: ${deslocamento}. Use um inteiro não negativo.`,
+      );
+    }
+    const resultado = await this.executar(
+      `SELECT ${COLUNAS} FROM transacoes ORDER BY data DESC, id DESC LIMIT ? OFFSET ?`,
+      [limite, deslocamento],
+    );
+    return linhas<LinhaTransacao>(resultado).map(paraTransacao);
+  }
+
   async buscarPorId(id: number): Promise<Transacao | null> {
     const resultado = await this.executar(
       `SELECT ${COLUNAS} FROM transacoes WHERE id = ?`,

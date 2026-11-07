@@ -11,6 +11,7 @@ const TEST_CONFIG = {
   jwtExpiresIn: '1h',
   databasePath: ':memory:',
   bcryptRounds: 4, // rápido nos testes; em produção vem do .env
+  logLevel: 'silent',
 };
 
 const VALID_USER = {

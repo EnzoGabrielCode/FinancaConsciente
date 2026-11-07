@@ -4,6 +4,7 @@ const {
   UnauthorizedError,
   NotFoundError,
 } = require('../../../domain/errors');
+const { pathOf } = require('./requestLogger');
 
 const STATUS_BY_ERROR = new Map([
   [ValidationError, 400],
@@ -23,23 +24,30 @@ function notFound(_req, res) {
   res.status(404).json({ error: 'Rota não encontrada.' });
 }
 
-// eslint-disable-next-line no-unused-vars
-function errorHandler(err, _req, res, _next) {
-  const status = statusFor(err);
-  if (status) {
-    return res.status(status).json({ error: err.message, details: err.details });
-  }
+function createErrorHandler({ logger }) {
+  // eslint-disable-next-line no-unused-vars
+  return (err, req, res, _next) => {
+    const status = statusFor(err);
+    if (status) {
+      return res.status(status).json({ error: err.message, details: err.details });
+    }
 
-  // JSON malformado no corpo da requisição (erro do express.json()).
-  if (err.type === 'entity.parse.failed') {
-    return res.status(400).json({ error: 'JSON inválido.' });
-  }
-  if (err.type === 'entity.too.large') {
-    return res.status(413).json({ error: 'Corpo da requisição muito grande.' });
-  }
+    // JSON malformado no corpo da requisição (erro do express.json()).
+    if (err.type === 'entity.parse.failed') {
+      return res.status(400).json({ error: 'JSON inválido.' });
+    }
+    if (err.type === 'entity.too.large') {
+      return res.status(413).json({ error: 'Corpo da requisição muito grande.' });
+    }
 
-  console.error(err);
-  return res.status(500).json({ error: 'Erro interno do servidor.' });
+    logger.error('erro não tratado', {
+      requestId: req.id,
+      method: req.method,
+      path: pathOf(req),
+      error: err,
+    });
+    return res.status(500).json({ error: 'Erro interno do servidor.' });
+  };
 }
 
-module.exports = { notFound, errorHandler };
+module.exports = { notFound, createErrorHandler };

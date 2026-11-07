@@ -96,6 +96,19 @@ export function rotuloMes(anoMes: string): string {
   return ROTULOS_MES[separarAnoMes(anoMes)[1] - 1] ?? '';
 }
 
+export function formatarCabecalhoDia(
+  dataISO: string,
+  hoje: Date = new Date(),
+): string {
+  const amigavel = formatarDataAmigavel(dataISO, hoje);
+  if (amigavel === 'Hoje' || amigavel === 'Ontem') {
+    return amigavel;
+  }
+  const [ano, , dia] = dataISO.split('-');
+  const rotulo = `${Number(dia)} de ${rotuloMes(anoMesDe(dataISO))}.`;
+  return Number(ano) === hoje.getFullYear() ? rotulo : `${rotulo} de ${ano}`;
+}
+
 export function saudacao(agora: Date = new Date()): string {
   const hora = agora.getHours();
   if (hora >= 5 && hora < 12) {

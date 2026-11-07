@@ -1,4 +1,4 @@
-import React, {useMemo, useRef} from 'react';
+import React, {useLayoutEffect, useMemo, useRef} from 'react';
 import {
   Animated,
   PanResponder,
@@ -80,6 +80,13 @@ function TransacaoItem({
       }),
     };
   }, [deslocamento]);
+
+  // A FlashList recicla o componente para outra transação: sem isto, um item
+  // aberto no deslize reapareceria aberto com o botão Excluir de outro lançamento.
+  useLayoutEffect(() => {
+    deslocamento.setValue(0);
+    aberto.current = false;
+  }, [transacao.id, deslocamento]);
 
   // Só mostra o vermelho durante o deslize; parado, ele vazaria pela borda
   // translúcida do card.
@@ -260,4 +267,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default TransacaoItem;
+export default React.memo(TransacaoItem);

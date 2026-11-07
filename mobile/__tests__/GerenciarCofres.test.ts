@@ -68,6 +68,7 @@ class CofresFake implements CofreRepository {
 function transacoesFake(saldoCentavos: number): TransacaoRepository {
   return {
     listarRecentes: jest.fn(async () => []),
+    listarPagina: jest.fn(async () => []),
     buscarPorId: jest.fn(async () => null),
     criar: jest.fn(async () => 1),
     atualizar: jest.fn(async () => {}),

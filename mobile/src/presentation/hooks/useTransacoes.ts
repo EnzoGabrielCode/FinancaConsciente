@@ -17,7 +17,7 @@ import type {CofreRepository} from '../../domain/repositories/CofreRepository';
 import type {TransacaoRepository} from '../../domain/repositories/TransacaoRepository';
 import {mensagemDeErro} from '../utils/mensagemDeErro';
 
-export const LIMITE_RECENTES = 20;
+export const LIMITE_RECENTES = 5;
 
 export interface EstadoTransacoes {
   transacoes: Transacao[];

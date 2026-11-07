@@ -7,3 +7,5 @@ jest.mock('react-native-sqlite-storage');
 jest.mock('react-native-image-picker');
 
 jest.mock('react-native-fs');
+
+require('@shopify/flash-list/jestSetup');

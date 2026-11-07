@@ -197,6 +197,7 @@ Variáveis do `.env`:
 | `JWT_EXPIRES_IN` | Validade do token (`15m`, `1h`, `7d`...) | `1h` |
 | `DATABASE_PATH` | Arquivo SQLite (a pasta é criada automaticamente) | `./data/financaconsciente.db` |
 | `BCRYPT_ROUNDS` | Custo do Bcrypt (10 a 15) | `12` |
+| `LOG_LEVEL` | Nível mínimo dos logs: `error`, `warn`, `info`, `http`, `debug` ou `silent` (requisições bem-sucedidas usam `http`) | `info` |
 
 Rotas da API:
 

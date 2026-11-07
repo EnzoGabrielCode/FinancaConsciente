@@ -162,6 +162,41 @@ describe('SqliteTransacaoRepository', () => {
     expect(parametros).toEqual([20]);
   });
 
+  it('pagina com LIMIT e OFFSET parametrizados na ordem de listarRecentes', async () => {
+    await expect(repositorio.listarPagina(30, 60)).resolves.toEqual([]);
+    const {sql, parametros} = ultimaChamada();
+    expect(sql).toMatch(/ORDER BY data DESC, id DESC LIMIT \? OFFSET \?$/);
+    expect(parametros).toEqual([30, 60]);
+  });
+
+  it('aceita deslocamento zero na primeira página', async () => {
+    await repositorio.listarPagina(30, 0);
+    expect(ultimaChamada().parametros).toEqual([30, 0]);
+  });
+
+  it.each([
+    [0, 0],
+    [-1, 0],
+    [1.5, 0],
+    [Number.NaN, 0],
+  ])('rejeita limite inválido (%p)', async (limite, deslocamento) => {
+    await expect(
+      repositorio.listarPagina(limite, deslocamento),
+    ).rejects.toThrow('Limite inválido');
+    expect(db.executeSql).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [30, -1],
+    [30, 1.5],
+    [30, Number.NaN],
+  ])('rejeita deslocamento inválido (%p, %p)', async (limite, deslocamento) => {
+    await expect(
+      repositorio.listarPagina(limite, deslocamento),
+    ).rejects.toThrow('Deslocamento inválido');
+    expect(db.executeSql).not.toHaveBeenCalled();
+  });
+
   const responderLinhas = (linhasRetornadas: object[]) =>
     db.executeSql.mockImplementationOnce(async () => [
       {

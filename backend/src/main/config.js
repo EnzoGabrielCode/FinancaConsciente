@@ -1,5 +1,7 @@
 const path = require('node:path');
 
+const LOG_LEVELS = ['error', 'warn', 'info', 'http', 'debug', 'silent'];
+
 /**
  * Lê a configuração das variáveis de ambiente (arquivo .env em dev).
  * Falha cedo se algo obrigatório estiver ausente ou inválido.
@@ -20,12 +22,19 @@ function loadConfig(env = process.env) {
     throw new Error('PORT deve ser um inteiro positivo.');
   }
 
+  const logLevel = env.LOG_LEVEL ?? 'info';
+  if (!LOG_LEVELS.includes(logLevel)) {
+    throw new Error(`LOG_LEVEL deve ser um destes valores: ${LOG_LEVELS.join(', ')}.`);
+  }
+
   return {
+    env: env.NODE_ENV || 'development',
     port,
     jwtSecret,
     jwtExpiresIn: env.JWT_EXPIRES_IN || '1h',
     databasePath: env.DATABASE_PATH || path.join(__dirname, '..', '..', 'data', 'financaconsciente.db'),
     bcryptRounds,
+    logLevel,
   };
 }
 

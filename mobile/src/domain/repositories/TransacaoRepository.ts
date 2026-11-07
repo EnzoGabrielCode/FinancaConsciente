@@ -8,6 +8,7 @@ import type {
 
 export interface TransacaoRepository {
   listarRecentes(limite: number): Promise<Transacao[]>;
+  listarPagina(limite: number, deslocamento: number): Promise<Transacao[]>;
   buscarPorId(id: number): Promise<Transacao | null>;
   criar(dados: DadosTransacao): Promise<number>;
   atualizar(id: number, dados: DadosTransacao): Promise<void>;

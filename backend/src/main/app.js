@@ -2,6 +2,7 @@ const express = require('express');
 const helmet = require('helmet');
 
 const { createDatabase } = require('../infrastructure/database/sqlite');
+const { createLogger } = require('../infrastructure/logging/logger');
 const { SqliteUserRepository } = require('../infrastructure/repositories/SqliteUserRepository');
 const { BcryptPasswordHasher } = require('../infrastructure/security/BcryptPasswordHasher');
 const { JwtTokenService } = require('../infrastructure/security/JwtTokenService');
@@ -11,14 +12,16 @@ const { GetCurrentUser } = require('../application/usecases/GetCurrentUser');
 const { AuthController } = require('../interfaces/http/controllers/AuthController');
 const { UserController } = require('../interfaces/http/controllers/UserController');
 const { authenticate } = require('../interfaces/http/middlewares/authenticate');
-const { notFound, errorHandler } = require('../interfaces/http/middlewares/errorHandler');
+const { notFound, createErrorHandler } = require('../interfaces/http/middlewares/errorHandler');
+const { requestLogger } = require('../interfaces/http/middlewares/requestLogger');
 const { createRoutes } = require('../interfaces/http/routes');
 
 /**
  * Composition root: instancia as dependências de cada camada e monta o app.
- * Retorna também o banco para que o chamador (server ou testes) possa fechá-lo.
+ * Retorna também o banco e o logger para uso do chamador (server ou testes).
  */
 function createApp(config) {
+  const logger = config.logger ?? createLogger({ level: config.logLevel, env: config.env });
   const db = createDatabase(config.databasePath);
 
   const userRepository = new SqliteUserRepository(db);
@@ -49,6 +52,8 @@ function createApp(config) {
       },
     }),
   );
+  // Antes do express.json para registrar também JSON inválido e corpo grande.
+  app.use(requestLogger({ logger }));
   app.use(express.json({ limit: '100kb' }));
 
   app.use(
@@ -61,9 +66,9 @@ function createApp(config) {
   );
 
   app.use(notFound);
-  app.use(errorHandler);
+  app.use(createErrorHandler({ logger }));
 
-  return { app, db };
+  return { app, db, logger };
 }
 
 module.exports = { createApp };

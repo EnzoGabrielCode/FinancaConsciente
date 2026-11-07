@@ -41,6 +41,7 @@ import {FONTES} from '../theme/fontes';
 import {ESTILO_SNACKBAR, TEMA_SNACKBAR} from '../theme';
 import {mensagemDeErro} from '../utils/mensagemDeErro';
 import CofresScreen from './CofresScreen';
+import TransacoesScreen from './TransacoesScreen';
 
 function DatabaseIcon(props: {size: number}): React.JSX.Element {
   return <Avatar.Icon {...props} icon="database" />;
@@ -108,6 +109,7 @@ function HomeScreen({
     visivel: false,
     abrirFormulario: false,
   });
+  const [telaTransacoes, setTelaTransacoes] = useState(false);
 
   const [sheet, setSheet] = useState<EstadoSheet>({
     visivel: false,
@@ -309,7 +311,19 @@ function HomeScreen({
           </View>
 
           <View style={styles.secaoTransacoes} testID="secao-transacoes">
-            <Text style={styles.textoTituloSecao}>Últimas Transações</Text>
+            <View style={styles.tituloSecao}>
+              <Text style={styles.textoTituloSecao}>Últimas Transações</Text>
+              {lancamentos.transacoes.length > 0 && (
+                <Pressable
+                  onPress={() => setTelaTransacoes(true)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Ver todas as transações"
+                  hitSlop={8}
+                  testID="botao-ver-todas">
+                  <Text style={styles.verTodos}>Ver todas</Text>
+                </Pressable>
+              )}
+            </View>
             {lancamentos.carregando && (
               <ActivityIndicator accessibilityLabel="Carregando lançamentos" />
             )}
@@ -402,6 +416,15 @@ function HomeScreen({
         abrirFormulario={telaCofres.abrirFormulario}
         cofres={cofres}
         onFechar={() => setTelaCofres({visivel: false, abrirFormulario: false})}
+      />
+
+      <TransacoesScreen
+        visivel={telaTransacoes}
+        lancamentos={lancamentos}
+        repositorio={repositorio}
+        seletorImagem={seletorImagem}
+        onAlterado={cofres.recarregar}
+        onFechar={() => setTelaTransacoes(false)}
       />
     </View>
   );
