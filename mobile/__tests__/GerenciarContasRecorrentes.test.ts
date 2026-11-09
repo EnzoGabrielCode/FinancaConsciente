@@ -142,6 +142,7 @@ describe('GerenciarContasRecorrentes', () => {
         recorrencia: 'fixa',
         comprovanteUri: null,
         contaRecorrenteId: 1,
+        idExterno: null,
       });
       expect(contas.contas[0].proxima).toBe('2026-12-10');
     });

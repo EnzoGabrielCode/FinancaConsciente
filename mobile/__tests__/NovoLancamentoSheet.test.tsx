@@ -31,6 +31,7 @@ import type {ContaRecorrenteRepository} from '../src/domain/repositories/ContaRe
 import type {ExportadorArquivos} from '../src/domain/repositories/ExportadorArquivos';
 import type {GeradorPdf} from '../src/domain/repositories/GeradorPdf';
 import type {Notificador} from '../src/domain/repositories/Notificador';
+import type {SeletorArquivo} from '../src/domain/repositories/SeletorArquivo';
 import type {OrcamentoRepository} from '../src/domain/repositories/OrcamentoRepository';
 import HomeScreen from '../src/presentation/screens/HomeScreen';
 import type {
@@ -58,6 +59,10 @@ class RepositorioEmMemoria implements TransacaoRepository {
   lancarRecorrente = jest.fn(async () => true);
 
   listarPorPeriodo = jest.fn(async () => [...this.transacoes]);
+
+  idsExternosExistentes = jest.fn(async () => new Set<string>());
+
+  importarLote = jest.fn(async () => 0);
 
   exemplosDeCategoria = jest.fn(async () =>
     this.transacoes
@@ -251,6 +256,7 @@ const despesa: Transacao = {
   recorrencia: 'variavel',
   comprovanteUri: null,
   contaRecorrenteId: null,
+  idExterno: null,
   sincronizado: true,
 };
 
@@ -280,6 +286,8 @@ const exportador: ExportadorArquivos = {
   compartilhar: async () => {},
 };
 
+const seletorArquivo: SeletorArquivo = {escolher: async () => null};
+
 const geradorPdf: GeradorPdf = {
   gerar: async () => 'JVBERi0=',
 };
@@ -307,6 +315,7 @@ async function renderizar(repositorio: TransacaoRepository) {
           notificador={notificador}
           exportador={exportador}
           geradorPdf={geradorPdf}
+          seletorArquivo={seletorArquivo}
           seletorImagem={seletor}
         />
       </PaperProvider>,
@@ -431,6 +440,7 @@ describe('NovoLancamentoSheet', () => {
         descricao: 'Salário',
         comprovanteUri: null,
         contaRecorrenteId: null,
+        idExterno: null,
       }),
     );
     expect(existe('novo-lancamento-sheet')).toBe(false);
@@ -1814,6 +1824,7 @@ describe('HomeScreen: cofres virtuais', () => {
     recorrencia: 'fixa',
     comprovanteUri: null,
     contaRecorrenteId: null,
+    idExterno: null,
     sincronizado: true,
   };
 

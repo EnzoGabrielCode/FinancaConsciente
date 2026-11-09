@@ -3,6 +3,7 @@ const RNFS = {
   CachesDirectoryPath: '/cache',
   readDir: jest.fn(async () => []),
   writeFile: jest.fn(async () => {}),
+  readFile: jest.fn(async () => ''),
   mkdir: jest.fn(async () => {}),
   exists: jest.fn(async () => false),
   copyFile: jest.fn(async () => {}),

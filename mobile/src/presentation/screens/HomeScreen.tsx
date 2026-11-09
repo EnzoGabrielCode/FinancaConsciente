@@ -24,6 +24,7 @@ import {DATABASE_NAME} from '../../data/database/connection';
 import {GerenciarCofres} from '../../domain/casosDeUso/GerenciarCofres';
 import {GerenciarContasRecorrentes} from '../../domain/casosDeUso/GerenciarContasRecorrentes';
 import {GerarRelatorios} from '../../domain/casosDeUso/GerarRelatorios';
+import {ImportarExtrato} from '../../domain/casosDeUso/ImportarExtrato';
 import {SugerirCategoria} from '../../domain/casosDeUso/SugerirCategoria';
 import {GerenciarOrcamentos} from '../../domain/casosDeUso/GerenciarOrcamentos';
 import {hojeISO, saudacao} from '../../domain/datas';
@@ -34,6 +35,7 @@ import type {CofreRepository} from '../../domain/repositories/CofreRepository';
 import type {ContaRecorrenteRepository} from '../../domain/repositories/ContaRecorrenteRepository';
 import type {ExportadorArquivos} from '../../domain/repositories/ExportadorArquivos';
 import type {GeradorPdf} from '../../domain/repositories/GeradorPdf';
+import type {SeletorArquivo} from '../../domain/repositories/SeletorArquivo';
 import type {Notificador} from '../../domain/repositories/Notificador';
 import type {OrcamentoRepository} from '../../domain/repositories/OrcamentoRepository';
 import type {TransacaoRepository} from '../../domain/repositories/TransacaoRepository';
@@ -71,6 +73,7 @@ interface Props {
   notificador: Notificador;
   exportador: ExportadorArquivos;
   geradorPdf: GeradorPdf;
+  seletorArquivo: SeletorArquivo;
   seletorImagem?: SeletorImagem;
 }
 
@@ -111,6 +114,7 @@ function HomeScreen({
   notificador,
   exportador,
   geradorPdf,
+  seletorArquivo,
   seletorImagem,
 }: Props): React.JSX.Element {
   const theme = useTheme();
@@ -182,6 +186,10 @@ function HomeScreen({
   const [telaTransacoes, setTelaTransacoes] = useState(false);
   const [telaOrcamentos, setTelaOrcamentos] = useState(false);
   const [telaRelatorios, setTelaRelatorios] = useState(false);
+  const importador = useMemo(
+    () => new ImportarExtrato(repositorio, sugeridorCategoria, verificarAlerta),
+    [repositorio, sugeridorCategoria, verificarAlerta],
+  );
   const gerarRelatorios = useMemo(
     () => new GerarRelatorios(repositorio, exportador, geradorPdf),
     [repositorio, exportador, geradorPdf],
@@ -549,6 +557,8 @@ function HomeScreen({
         repositorio={repositorio}
         seletorImagem={seletorImagem}
         sugeridorCategoria={sugeridorCategoria}
+        importador={importador}
+        seletorArquivo={seletorArquivo}
         onAlterado={cofres.recarregar}
         onFechar={() => setTelaTransacoes(false)}
       />

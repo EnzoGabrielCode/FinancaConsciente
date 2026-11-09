@@ -11,6 +11,7 @@ import type {ContaRecorrenteRepository} from '../src/domain/repositories/ContaRe
 import type {ExportadorArquivos} from '../src/domain/repositories/ExportadorArquivos';
 import type {GeradorPdf} from '../src/domain/repositories/GeradorPdf';
 import type {Notificador} from '../src/domain/repositories/Notificador';
+import type {SeletorArquivo} from '../src/domain/repositories/SeletorArquivo';
 import type {OrcamentoRepository} from '../src/domain/repositories/OrcamentoRepository';
 import type {TransacaoRepository} from '../src/domain/repositories/TransacaoRepository';
 import HomeScreen from '../src/presentation/screens/HomeScreen';
@@ -24,6 +25,8 @@ const repositorio: TransacaoRepository = {
   lancarRecorrente: async () => true,
   exemplosDeCategoria: async () => [],
   listarPorPeriodo: async () => [],
+  idsExternosExistentes: async () => new Set<string>(),
+  importarLote: async () => 0,
   buscarPorId: async () => null,
   criar: async () => 1,
   atualizar: async () => {},
@@ -64,6 +67,8 @@ const exportador: ExportadorArquivos = {
   compartilhar: async () => {},
 };
 
+const seletorArquivo: SeletorArquivo = {escolher: async () => null};
+
 const geradorPdf: GeradorPdf = {
   gerar: async () => 'JVBERi0=',
 };
@@ -99,6 +104,7 @@ async function renderizar(repositorioTela = repositorio) {
           notificador={notificador}
           exportador={exportador}
           geradorPdf={geradorPdf}
+          seletorArquivo={seletorArquivo}
         />
       </PaperProvider>,
     );
@@ -193,6 +199,7 @@ describe('HomeScreen: últimas transações', () => {
     recorrencia: 'variavel',
     comprovanteUri: null,
     contaRecorrenteId: null,
+    idExterno: null,
     sincronizado: false,
   }));
   const repositorioCheio: TransacaoRepository = {
@@ -297,6 +304,7 @@ describe('HomeScreen: contas fixas', () => {
             notificador={notificador}
             exportador={exportador}
             geradorPdf={geradorPdf}
+            seletorArquivo={seletorArquivo}
           />
         </PaperProvider>,
       );

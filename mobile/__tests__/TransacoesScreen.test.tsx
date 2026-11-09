@@ -7,6 +7,7 @@ import {hojeISO} from '../src/domain/datas';
 import type {Transacao} from '../src/domain/entities/Transacao';
 import type {TransacaoRepository} from '../src/domain/repositories/TransacaoRepository';
 import type {UseTransacoes} from '../src/presentation/hooks/useTransacoes';
+import type {ImportarExtrato} from '../src/domain/casosDeUso/ImportarExtrato';
 import TransacoesScreen from '../src/presentation/screens/TransacoesScreen';
 import {darkTheme} from '../src/presentation/theme';
 
@@ -20,6 +21,7 @@ const transacao = (id: number, data: string): Transacao => ({
   recorrencia: 'variavel',
   comprovanteUri: null,
   contaRecorrenteId: null,
+  idExterno: null,
   sincronizado: false,
 });
 
@@ -220,5 +222,125 @@ describe('TransacoesScreen', () => {
     expect(onAlterado).toHaveBeenCalledTimes(1);
     expect(listarPagina).toHaveBeenCalledWith(30, 0);
     expect(temTexto('Lançamento atualizado')).toBe(true);
+  });
+
+  describe('importar extrato', () => {
+    it('o botão do cabeçalho abre a importação e, ao importar, avisa e recarrega', async () => {
+      const importar = jest.fn(async () => 2);
+      await act(async () => {
+        tree = renderer.create(
+          <PaperProvider theme={darkTheme}>
+            <TransacoesScreen
+              visivel
+              lancamentos={lancamentos}
+              repositorio={{listarPagina} as unknown as TransacaoRepository}
+              importador={
+                {
+                  ler: jest.fn(),
+                  aplicarMapeamento: jest.fn(),
+                  importar,
+                } as never
+              }
+              seletorArquivo={{escolher: async () => null}}
+              onAlterado={onAlterado}
+              onFechar={() => {}}
+            />
+          </PaperProvider>,
+        );
+      });
+      const telaImportacao = () =>
+        tree.root.findAll(no => no.props.testID === 'importacao-screen');
+      expect(telaImportacao()).toHaveLength(0);
+
+      const [botao] = tree.root.findAll(
+        no =>
+          no.props.testID === 'transacoes-importar' &&
+          no.props.accessibilityLabel === 'Importar extrato' &&
+          typeof no.props.onPress === 'function',
+      );
+      await act(async () => botao.props.onPress());
+      expect(telaImportacao().length).toBeGreaterThan(0);
+
+      listarPagina.mockClear();
+      const [tela] = tree.root.findAll(
+        no => typeof no.props.onImportado === 'function',
+      );
+      await act(async () => tela.props.onImportado(2));
+
+      expect(telaImportacao()).toHaveLength(0);
+      expect(temTexto('2 lançamentos importados')).toBe(true);
+      expect(listarPagina).toHaveBeenCalledWith(30, 0);
+      expect(lancamentos.recarregar).toHaveBeenCalled();
+      expect(onAlterado).toHaveBeenCalled();
+    });
+
+    it('sem importador não mostra o botão', async () => {
+      await renderizar();
+      expect(
+        tree.root.findAll(no => no.props.testID === 'transacoes-importar'),
+      ).toHaveLength(0);
+    });
+  });
+
+  it('o botão "Importar extrato" abre a importação e, depois dela, recarrega e avisa', async () => {
+    const importador = {
+      ler: jest.fn(),
+      aplicarMapeamento: jest.fn(),
+      importar: jest.fn(),
+    } as unknown as ImportarExtrato;
+    await act(async () => {
+      tree = renderer.create(
+        <PaperProvider theme={darkTheme}>
+          <TransacoesScreen
+            visivel
+            lancamentos={lancamentos}
+            repositorio={{listarPagina} as unknown as TransacaoRepository}
+            importador={importador}
+            seletorArquivo={{escolher: async () => null}}
+            onAlterado={onAlterado}
+            onFechar={() => {}}
+          />
+        </PaperProvider>,
+      );
+    });
+    const telaImportacao = () =>
+      tree.root.findAll(no => no.props.testID === 'importacao-screen');
+    expect(telaImportacao()).toHaveLength(0);
+
+    await act(async () => {
+      tree.root
+        .find(
+          no =>
+            no.props.testID === 'transacoes-importar' &&
+            no.props.accessibilityLabel === 'Importar extrato' &&
+            typeof no.props.onPress === 'function',
+        )
+        .props.onPress();
+    });
+    expect(telaImportacao().length).toBeGreaterThan(0);
+
+    listarPagina.mockClear();
+    await act(async () => {
+      await tree.root
+        .find(no => typeof no.props.onImportado === 'function')
+        .props.onImportado(10);
+    });
+
+    expect(telaImportacao()).toHaveLength(0);
+    expect(listarPagina).toHaveBeenCalledWith(30, 0);
+    expect(lancamentos.recarregar).toHaveBeenCalled();
+    expect(onAlterado).toHaveBeenCalled();
+    expect(
+      tree.root.findAll(
+        no => no.props.children === '10 lançamentos importados',
+      ),
+    ).not.toHaveLength(0);
+  });
+
+  it('sem importador não mostra o botão', async () => {
+    await renderizar();
+    expect(
+      tree.root.findAll(no => no.props.testID === 'transacoes-importar'),
+    ).toHaveLength(0);
   });
 });

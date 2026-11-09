@@ -373,6 +373,7 @@ function NovoLancamentoSheet({
         recorrencia: tipo === 'receita' ? recorrencia : 'variavel',
         comprovanteUri: tipo === 'despesa' ? comprovanteUri : null,
         contaRecorrenteId: transacao?.contaRecorrenteId ?? null,
+        idExterno: transacao?.idExterno ?? null,
       },
       hojeISO(),
     );

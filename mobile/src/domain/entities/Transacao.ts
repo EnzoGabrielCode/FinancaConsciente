@@ -12,6 +12,8 @@ export interface Transacao {
   recorrencia: Recorrencia;
   comprovanteUri: string | null;
   contaRecorrenteId: number | null;
+  // Identificador do lançamento no extrato importado (OFX/CSV); evita duplicar.
+  idExterno: string | null;
   sincronizado: boolean;
 }
 

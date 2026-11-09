@@ -128,6 +128,15 @@ export const MIGRATIONS: Migration[] = [
         (conta_recorrente_id, data) WHERE conta_recorrente_id IS NOT NULL`,
     ],
   },
+  {
+    version: 9,
+    description: 'Adiciona identificador externo às transações',
+    statements: [
+      'ALTER TABLE transacoes ADD COLUMN id_externo TEXT',
+      `CREATE UNIQUE INDEX IF NOT EXISTS idx_transacoes_id_externo ON transacoes
+        (id_externo) WHERE id_externo IS NOT NULL`,
+    ],
+  },
 ];
 
 export const LATEST_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

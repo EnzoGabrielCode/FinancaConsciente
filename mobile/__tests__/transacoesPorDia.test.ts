@@ -13,6 +13,7 @@ const transacao = (id: number, data: string): Transacao => ({
   recorrencia: 'variavel',
   comprovanteUri: null,
   contaRecorrenteId: null,
+  idExterno: null,
   sincronizado: false,
 });
 

@@ -24,15 +24,19 @@ interface LinhaTransacao {
   recorrencia: Transacao['recorrencia'];
   comprovante_uri: string | null;
   conta_recorrente_id: number | null;
+  id_externo: string | null;
   sincronizado: number;
 }
 
 const COLUNAS =
-  'id, tipo, descricao, valor_centavos, data, categoria, recorrencia, comprovante_uri, conta_recorrente_id, sincronizado';
+  'id, tipo, descricao, valor_centavos, data, categoria, recorrencia, comprovante_uri, conta_recorrente_id, id_externo, sincronizado';
 
 const COLUNAS_INSERT = `(tipo, descricao, valor_centavos, data, categoria, recorrencia,
-         comprovante_uri, conta_recorrente_id, sincronizado)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)`;
+         comprovante_uri, conta_recorrente_id, id_externo, sincronizado)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`;
+
+// O SQLite antigo do Android aceita no máximo 999 parâmetros por comando.
+const LOTE_PARAMETROS = 500;
 
 function parametrosInsert(dados: DadosTransacao): (string | number | null)[] {
   return [
@@ -44,6 +48,7 @@ function parametrosInsert(dados: DadosTransacao): (string | number | null)[] {
     dados.recorrencia,
     dados.comprovanteUri,
     dados.contaRecorrenteId,
+    dados.idExterno,
   ];
 }
 
@@ -58,6 +63,7 @@ function paraTransacao(linha: LinhaTransacao): Transacao {
     recorrencia: linha.recorrencia,
     comprovanteUri: linha.comprovante_uri ?? null,
     contaRecorrenteId: linha.conta_recorrente_id ?? null,
+    idExterno: linha.id_externo ?? null,
     sincronizado: linha.sincronizado === 1,
   };
 }
@@ -161,7 +167,7 @@ export class SqliteTransacaoRepository implements TransacaoRepository {
         `UPDATE transacoes
           SET tipo = ?, descricao = ?, valor_centavos = ?, data = ?,
               categoria = ?, recorrencia = ?, comprovante_uri = ?,
-              conta_recorrente_id = ?, sincronizado = 0
+              conta_recorrente_id = ?, id_externo = ?, sincronizado = 0
           WHERE id = ?`,
         [...parametrosInsert(dados), id],
       );
@@ -230,6 +236,45 @@ export class SqliteTransacaoRepository implements TransacaoRepository {
       gastos[linha.categoria] = Number(linha.total ?? 0);
     }
     return gastos;
+  }
+
+  async idsExternosExistentes(ids: string[]): Promise<Set<string>> {
+    const existentes = new Set<string>();
+    for (let i = 0; i < ids.length; i += LOTE_PARAMETROS) {
+      const parte = ids.slice(i, i + LOTE_PARAMETROS);
+      // Só os "?" são gerados; os ids vão nos parâmetros.
+      const marcadores = parte.map(() => '?').join(', ');
+      const resultado = await this.executar(
+        `SELECT id_externo FROM transacoes WHERE id_externo IN (${marcadores})`,
+        parte,
+      );
+      for (const {id_externo} of linhas<{id_externo: string}>(resultado)) {
+        existentes.add(id_externo);
+      }
+    }
+    return existentes;
+  }
+
+  // Tudo ou nada; o OR IGNORE pula o que já foi importado pelo id_externo.
+  async importarLote(lote: DadosTransacao[]): Promise<number> {
+    if (lote.length === 0) {
+      return 0;
+    }
+    const db = await this.obterBanco();
+    let inseridos = 0;
+    await db.transaction(tx => {
+      for (const dados of lote) {
+        tx.executeSql(
+          `INSERT OR IGNORE INTO transacoes
+            ${COLUNAS_INSERT}`,
+          parametrosInsert(dados),
+          (_tx, resultado) => {
+            inseridos += resultado.rowsAffected;
+          },
+        );
+      }
+    });
+    return inseridos;
   }
 
   async listarPorPeriodo({

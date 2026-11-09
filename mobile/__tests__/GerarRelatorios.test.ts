@@ -37,6 +37,7 @@ const despesa = (dados: Partial<DadosTransacao> = {}): DadosTransacao => ({
   recorrencia: 'variavel',
   comprovanteUri: null,
   contaRecorrenteId: null,
+  idExterno: null,
   ...dados,
 });
 
@@ -205,7 +206,7 @@ describe('GerarRelatorios', () => {
 
     const [nome, conteudo] = exportador.salvarTexto.mock.calls[0];
     expect(nome).toBe('financaconsciente-2026-11-01-a-2026-11-30.csv');
-    expect(conteudo.startsWith('﻿Data;')).toBe(true);
+    expect(conteudo.startsWith('\uFEFFData;')).toBe(true);
     expect(exportador.compartilhar).toHaveBeenCalledWith(
       '/cache/relatorios/financaconsciente-2026-11-01-a-2026-11-30.csv',
       'text/csv',
@@ -273,7 +274,7 @@ describe('RnfsExportador', () => {
 
     const caminho = await new RnfsExportador(() => agora).salvarTexto(
       'extrato.csv',
-      '﻿Data;',
+      '\uFEFFData;',
     );
 
     expect(PASTA_RELATORIOS).toBe('/cache/relatorios');
@@ -281,7 +282,7 @@ describe('RnfsExportador', () => {
     expect(RNFS.unlink).toHaveBeenCalledTimes(1);
     expect(RNFS.unlink).toHaveBeenCalledWith('/cache/relatorios/antigo.pdf');
     expect(caminho).toBe('/cache/relatorios/extrato.csv');
-    expect(RNFS.writeFile).toHaveBeenCalledWith(caminho, '﻿Data;', 'utf8');
+    expect(RNFS.writeFile).toHaveBeenCalledWith(caminho, '\uFEFFData;', 'utf8');
   });
 
   it('grava o PDF em base64', async () => {

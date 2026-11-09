@@ -17,8 +17,10 @@ import {
 } from 'react-native-paper';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
+import type {ImportarExtrato} from '../../domain/casosDeUso/ImportarExtrato';
 import type {SugeridorCategoria} from '../../domain/casosDeUso/SugerirCategoria';
 import type {DadosTransacao, Transacao} from '../../domain/entities/Transacao';
+import type {SeletorArquivo} from '../../domain/repositories/SeletorArquivo';
 import type {TransacaoRepository} from '../../domain/repositories/TransacaoRepository';
 import {
   agruparPorDia,
@@ -29,6 +31,7 @@ import NovoLancamentoSheet from '../components/NovoLancamentoSheet';
 import TransacaoItem from '../components/TransacaoItem';
 import {useTodasTransacoes} from '../hooks/useTodasTransacoes';
 import type {UseTransacoes} from '../hooks/useTransacoes';
+import ImportacaoScreen, {textoImportados} from './ImportacaoScreen';
 import type {SeletorImagem} from '../servicos/seletorImagem';
 import {CORES} from '../theme/cores';
 import {FONTES} from '../theme/fontes';
@@ -41,6 +44,8 @@ interface Props {
   repositorio: TransacaoRepository;
   seletorImagem?: SeletorImagem;
   sugeridorCategoria?: SugeridorCategoria;
+  importador?: Pick<ImportarExtrato, 'ler' | 'aplicarMapeamento' | 'importar'>;
+  seletorArquivo?: SeletorArquivo;
   onAlterado?: () => void;
   onFechar: () => void;
 }
@@ -65,6 +70,8 @@ function TransacoesScreen({
   repositorio,
   seletorImagem,
   sugeridorCategoria,
+  importador,
+  seletorArquivo,
   onAlterado,
   onFechar,
 }: Props): React.JSX.Element {
@@ -79,6 +86,7 @@ function TransacoesScreen({
   const [paraExcluir, setParaExcluir] = useState<Transacao | null>(null);
   const [excluindo, setExcluindo] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
+  const [importando, setImportando] = useState(false);
   const [atualizando, setAtualizando] = useState(false);
 
   useEffect(() => {
@@ -125,6 +133,14 @@ function TransacoesScreen({
       setAtualizando(false);
     }
   }, [recarregar]);
+
+  // A Home também recarrega (saldo, gráfico e orçamentos) pelo useTransacoes.
+  const aposImportar = async (quantidade: number) => {
+    setImportando(false);
+    setAviso(textoImportados(quantidade));
+    onAlterado?.();
+    await Promise.all([recarregar(), lancamentos.recarregar()]);
+  };
 
   const aposAlterar = async () => {
     onAlterado?.();
@@ -255,7 +271,22 @@ function TransacoesScreen({
               <Icon source="arrow-left" size={20} color={CORES.texto} />
             </Pressable>
             <Text style={styles.titulo}>Transações</Text>
-            <View style={styles.espacoCabecalho} />
+            {importador && seletorArquivo ? (
+              <Pressable
+                onPress={() => setImportando(true)}
+                accessibilityRole="button"
+                accessibilityLabel="Importar extrato"
+                testID="transacoes-importar"
+                style={styles.botaoVoltar}>
+                <Icon
+                  source="file-import-outline"
+                  size={20}
+                  color={CORES.texto}
+                />
+              </Pressable>
+            ) : (
+              <View style={styles.espacoCabecalho} />
+            )}
           </View>
 
           {renderizarConteudo()}
@@ -290,6 +321,15 @@ function TransacoesScreen({
         seletorImagem={seletorImagem}
         sugeridorCategoria={sugeridorCategoria}
       />
+      {importador && seletorArquivo && (
+        <ImportacaoScreen
+          visivel={importando}
+          importador={importador}
+          seletorArquivo={seletorArquivo}
+          onFechar={() => setImportando(false)}
+          onImportado={aposImportar}
+        />
+      )}
     </Modal>
   );
 }

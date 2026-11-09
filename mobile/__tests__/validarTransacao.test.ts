@@ -16,6 +16,7 @@ const valida: DadosTransacao = {
   recorrencia: 'fixa',
   comprovanteUri: null,
   contaRecorrenteId: null,
+  idExterno: null,
 };
 
 describe('validarTransacao', () => {

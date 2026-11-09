@@ -34,6 +34,7 @@ const lancamento = (dados: Partial<Transacao>): Transacao => ({
   recorrencia: 'variavel',
   comprovanteUri: null,
   contaRecorrenteId: null,
+  idExterno: null,
   sincronizado: false,
   ...dados,
 });

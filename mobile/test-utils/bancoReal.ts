@@ -36,12 +36,28 @@ export function criarBancoReal(): SQLiteDatabase {
     ],
     transaction: async (
       escopo: (tx: {
-        executeSql: (sql: string, parametros?: Parametros) => unknown;
+        executeSql: (
+          sql: string,
+          parametros?: Parametros,
+          aoTerminar?: (tx: unknown, resultado: unknown) => void,
+        ) => unknown;
       }) => void,
     ) => {
       banco.exec('BEGIN');
       try {
-        escopo({executeSql: executar});
+        // Como o plugin: o callback de sucesso recebe o resultado (rowsAffected).
+        const tx = {
+          executeSql: (
+            sql: string,
+            parametros?: Parametros,
+            aoTerminar?: (tx: unknown, resultado: unknown) => void,
+          ) => {
+            const resultado = executar(sql, parametros);
+            aoTerminar?.(tx, resultado);
+            return resultado;
+          },
+        };
+        escopo(tx);
         banco.exec('COMMIT');
       } catch (erro) {
         banco.exec('ROLLBACK');

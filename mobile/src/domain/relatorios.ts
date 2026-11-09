@@ -105,7 +105,7 @@ export function montarRelatorio(
   };
 }
 
-const BOM = '﻿';
+const BOM = '\uFEFF';
 const SEPARADOR = ';';
 const QUEBRA = '\r\n';
 

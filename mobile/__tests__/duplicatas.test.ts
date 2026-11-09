@@ -22,6 +22,7 @@ const nova: DadosTransacao = {
   recorrencia: 'variavel',
   comprovanteUri: null,
   contaRecorrenteId: null,
+  idExterno: null,
 };
 
 let proximoId = 1;

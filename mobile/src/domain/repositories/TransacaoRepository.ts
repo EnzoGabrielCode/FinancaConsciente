@@ -18,6 +18,8 @@ export interface TransacaoRepository {
   buscarPorId(id: number): Promise<Transacao | null>;
   criar(dados: DadosTransacao): Promise<number>;
   lancarRecorrente(dados: DadosTransacao): Promise<boolean>;
+  idsExternosExistentes(ids: string[]): Promise<Set<string>>;
+  importarLote(lote: DadosTransacao[]): Promise<number>;
   atualizar(id: number, dados: DadosTransacao): Promise<void>;
   excluir(id: number): Promise<void>;
   saldoAte(dataISO: string): Promise<number>;

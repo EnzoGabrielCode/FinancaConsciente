@@ -121,6 +121,7 @@ export class GerenciarContasRecorrentes {
             recorrencia: 'fixa',
             comprovanteUri: null,
             contaRecorrenteId: conta.id,
+            idExterno: null,
           });
           await this.contas.avancarProxima(
             conta.id,

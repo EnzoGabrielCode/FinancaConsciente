@@ -19,6 +19,7 @@ const despesa: DadosTransacao = {
   recorrencia: 'variavel',
   comprovanteUri: null,
   contaRecorrenteId: null,
+  idExterno: null,
 };
 
 const receita: DadosTransacao = {

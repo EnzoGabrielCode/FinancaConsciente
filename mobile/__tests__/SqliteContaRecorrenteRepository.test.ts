@@ -29,6 +29,7 @@ const despesa = (contaRecorrenteId: number | null): DadosTransacao => ({
   recorrencia: 'fixa',
   comprovanteUri: null,
   contaRecorrenteId,
+  idExterno: null,
 });
 
 let db: SQLiteDatabase;
@@ -112,6 +113,7 @@ describe('SqliteContaRecorrenteRepository', () => {
     await expect(transacoes.buscarPorId(transacaoId)).resolves.toMatchObject({
       descricao: 'Internet',
       contaRecorrenteId: null,
+      idExterno: null,
     });
   });
 });

@@ -12,6 +12,7 @@ import {SqliteTransacaoRepository} from './src/data/repositories/SqliteTransacao
 import {NotifeeNotificador} from './src/data/servicos/NotifeeNotificador';
 import {PdfLibGerador} from './src/data/servicos/PdfLibGerador';
 import {RnfsExportador} from './src/data/servicos/RnfsExportador';
+import {SeletorArquivoDocumentPicker} from './src/data/servicos/SeletorArquivo';
 import HomeScreen from './src/presentation/screens/HomeScreen';
 import {darkTheme} from './src/presentation/theme';
 import {CORES} from './src/presentation/theme/cores';
@@ -24,6 +25,7 @@ const repositorioContas = new SqliteContaRecorrenteRepository(obterBanco);
 const notificador = new NotifeeNotificador();
 const exportador = new RnfsExportador();
 const geradorPdf = new PdfLibGerador();
+const seletorArquivo = new SeletorArquivoDocumentPicker();
 const armazenamento = new FsArmazenamentoComprovantes();
 
 function App(): React.JSX.Element {
@@ -40,6 +42,7 @@ function App(): React.JSX.Element {
           notificador={notificador}
           exportador={exportador}
           geradorPdf={geradorPdf}
+          seletorArquivo={seletorArquivo}
         />
       </PaperProvider>
     </SafeAreaProvider>

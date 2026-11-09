@@ -114,6 +114,7 @@ describe('SqliteTransacaoRepository.exemplosDeCategoria', () => {
     recorrencia: 'variavel',
     comprovanteUri: null,
     contaRecorrenteId: null,
+    idExterno: null,
   });
 
   beforeEach(async () => {

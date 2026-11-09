@@ -28,4 +28,14 @@ jest.mock('react-native-share', () => ({
   default: {open: jest.fn(async () => ({success: true}))},
 }));
 
+jest.mock('react-native-document-picker', () => {
+  const isCancel = erro => erro?.code === 'DOCUMENT_PICKER_CANCELED';
+  const picker = {
+    pickSingle: jest.fn(),
+    isCancel: jest.fn(isCancel),
+    types: {allFiles: '*/*'},
+  };
+  return {__esModule: true, default: picker, ...picker};
+});
+
 require('@shopify/flash-list/jestSetup');

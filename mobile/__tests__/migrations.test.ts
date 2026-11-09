@@ -308,8 +308,8 @@ describe('migração v8: contas recorrentes', () => {
     return db;
   }
 
-  it('é a versão mais recente', () => {
-    expect(LATEST_VERSION).toBe(8);
+  it('é a v8', () => {
+    expect(MIGRATIONS[7].version).toBe(8);
   });
 
   it('cria a tabela com os padrões e a coluna nova nas transações', async () => {
@@ -401,5 +401,44 @@ describe('migração v8: contas recorrentes', () => {
       );
     await expect(inserir(10, 4)).rejects.toThrow(/CHECK/);
     await expect(inserir(32, 2)).rejects.toThrow(/CHECK/);
+  });
+});
+
+describe('migração v9: identificador externo', () => {
+  const inserir = (db: SQLiteDatabase, idExterno: string | null) =>
+    db.executeSql(
+      `INSERT INTO transacoes (tipo, descricao, valor_centavos, data, id_externo)
+        VALUES ('despesa', 'Mercado', 100, '2026-11-03', ?)`,
+      [idExterno],
+    );
+
+  it('é a versão mais recente', () => {
+    expect(LATEST_VERSION).toBe(9);
+  });
+
+  it('transações antigas ficam com id_externo NULL', async () => {
+    const db = criarBancoReal();
+    await runMigrations(db, MIGRATIONS.slice(0, 8));
+    await db.executeSql(
+      `INSERT INTO transacoes (tipo, descricao, valor_centavos, data)
+        VALUES ('despesa', 'Antiga', 100, '2026-01-01')`,
+    );
+
+    await expect(runMigrations(db)).resolves.toBe(9);
+
+    const [resultado] = await db.executeSql(
+      'SELECT id_externo FROM transacoes',
+    );
+    expect(resultado.rows.item(0).id_externo).toBeNull();
+  });
+
+  it('o índice único barra o mesmo id externo e aceita vários NULL', async () => {
+    const db = criarBancoReal();
+    await runMigrations(db);
+    await inserir(db, 'ofx:123:A1');
+    await inserir(db, null);
+    await inserir(db, null);
+
+    await expect(inserir(db, 'ofx:123:A1')).rejects.toThrow(/UNIQUE/);
   });
 });

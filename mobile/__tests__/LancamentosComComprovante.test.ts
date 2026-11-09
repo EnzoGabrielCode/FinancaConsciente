@@ -26,6 +26,10 @@ class RepositorioFake implements TransacaoRepository {
 
   listarPorPeriodo = jest.fn(async () => []);
 
+  idsExternosExistentes = jest.fn(async () => new Set<string>());
+
+  importarLote = jest.fn(async () => 0);
+
   buscarPorId = jest.fn(
     async (id: number) => this.transacoes.find(t => t.id === id) ?? null,
   );
@@ -82,6 +86,7 @@ const despesa: DadosTransacao = {
   recorrencia: 'variavel',
   comprovanteUri: null,
   contaRecorrenteId: null,
+  idExterno: null,
 };
 
 const TEMPORARIA = 'file:///cache/rn_image_picker_lib_temp_1.jpg';
