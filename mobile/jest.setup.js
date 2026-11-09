@@ -12,4 +12,15 @@ jest.mock('@notifee/react-native', () =>
   require('@notifee/react-native/jest-mock'),
 );
 
+jest.mock('@react-native-ml-kit/text-recognition', () => ({
+  __esModule: true,
+  default: {recognize: jest.fn()},
+}));
+
+jest.mock('@react-native-community/datetimepicker', () => ({
+  __esModule: true,
+  default: () => null,
+  DateTimePickerAndroid: {open: jest.fn(), dismiss: jest.fn()},
+}));
+
 require('@shopify/flash-list/jestSetup');

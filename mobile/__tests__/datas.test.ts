@@ -5,6 +5,7 @@ import {
   avancarMes,
   diasEntre,
   formatarCabecalhoDia,
+  formatarDiaComAno,
   formatarDiaCurto,
   formatarMesCurto,
   mesesEntre,
@@ -174,5 +175,18 @@ describe('formatarDiaCurto e formatarMesCurto', () => {
     expect(formatarDiaCurto('2026-11-30')).toBe('30 de nov.');
     expect(formatarDiaCurto('2026-03-05')).toBe('5 de mar.');
     expect(formatarMesCurto('2026-12')).toBe('dez. 2026');
+  });
+});
+
+describe('formatarDiaComAno', () => {
+  const hoje = new Date(2026, 10, 8);
+
+  it('omite o ano atual e mostra os outros', () => {
+    expect(formatarDiaComAno('2026-11-03', hoje)).toBe('3 de nov.');
+    expect(formatarDiaComAno('2025-12-20', hoje)).toBe('20 de dez. de 2025');
+  });
+
+  it('não troca hoje e ontem por palavras', () => {
+    expect(formatarDiaComAno('2026-11-08', hoje)).toBe('8 de nov.');
   });
 });

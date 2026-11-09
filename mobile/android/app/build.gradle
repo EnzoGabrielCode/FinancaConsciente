@@ -124,3 +124,11 @@ project.ext.vectoricons = [
     iconFontNames: [ "MaterialCommunityIcons.ttf" ]
 ]
 apply from: file("../../node_modules/react-native-vector-icons/fonts.gradle")
+
+// Só usamos o script latino do ML Kit: os outros 4 modelos ficam fora do APK.
+configurations.all {
+    exclude group: 'com.google.mlkit', module: 'text-recognition-chinese'
+    exclude group: 'com.google.mlkit', module: 'text-recognition-devanagari'
+    exclude group: 'com.google.mlkit', module: 'text-recognition-japanese'
+    exclude group: 'com.google.mlkit', module: 'text-recognition-korean'
+}

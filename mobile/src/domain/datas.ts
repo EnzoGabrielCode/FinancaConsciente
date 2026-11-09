@@ -20,6 +20,12 @@ export function dataISOValida(data: string): boolean {
   );
 }
 
+// Em UTC: no horário local, um dia com mudança de fuso não teria 24 horas.
+export function somarDias(dataISO: string, dias: number): string {
+  const instante = Date.parse(`${dataISO}T00:00:00Z`) + dias * 864e5;
+  return new Date(instante).toISOString().slice(0, 10);
+}
+
 export function formatarDataCurta(data: string): string {
   const [ano, mes, dia] = data.split('-');
   return `${dia}/${mes}/${ano}`;
@@ -158,7 +164,15 @@ export function formatarCabecalhoDia(
   if (amigavel === 'Hoje' || amigavel === 'Ontem') {
     return amigavel;
   }
-  const [ano] = dataISO.split('-');
+  return formatarDiaComAno(dataISO, hoje);
+}
+
+// "3 de nov." no ano atual e "20 de dez. de 2025" nos outros.
+export function formatarDiaComAno(
+  dataISO: string,
+  hoje: Date = new Date(),
+): string {
+  const ano = dataISO.slice(0, 4);
   const rotulo = formatarDiaCurto(dataISO);
   return Number(ano) === hoje.getFullYear() ? rotulo : `${rotulo} de ${ano}`;
 }

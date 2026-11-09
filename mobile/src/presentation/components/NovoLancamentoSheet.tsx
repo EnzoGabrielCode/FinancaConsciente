@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -24,13 +24,22 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
 import {categoriasDo} from '../../domain/categorias';
 import {validarImagemComprovante} from '../../domain/comprovante';
-import {hojeISO} from '../../domain/datas';
+import type {LerRecibo} from '../../domain/casosDeUso/LerRecibo';
+import {
+  dataISOValida,
+  formatarCabecalhoDia,
+  formatarDiaComAno,
+  hojeISO,
+  somarDias,
+} from '../../domain/datas';
 import {
   centavosParaDigitado,
+  formatarCentavos,
   formatarDigitado,
   paraCentavos,
 } from '../../domain/dinheiro';
 import type {PossivelDuplicata} from '../../domain/entities/Duplicata';
+import type {DadosRecibo} from '../../domain/entities/Recibo';
 import type {
   DadosTransacao,
   Recorrencia,
@@ -42,6 +51,8 @@ import {
   validarTransacao,
   type ErrosTransacao,
 } from '../../domain/validacao/validarTransacao';
+import {lerReciboPadrao} from '../servicos/leitorRecibo';
+import {seletorDataPadrao, type SeletorData} from '../servicos/seletorData';
 import {
   seletorImagemPadrao,
   type SeletorImagem,
@@ -64,6 +75,38 @@ interface Props {
     dados: DadosTransacao,
   ) => Promise<PossivelDuplicata[]>;
   seletorImagem?: SeletorImagem;
+  seletorData?: SeletorData;
+  lerRecibo?: Pick<LerRecibo, 'ler'>;
+}
+
+interface CamposAntesDoRecibo {
+  valor: string;
+  data: string;
+  descricao: string;
+}
+
+interface AvisoRecibo {
+  mensagem: string;
+  antes: CamposAntesDoRecibo | null;
+}
+
+export const AVISO_SEM_VALOR = 'Não consegui ler o valor. Digite manualmente.';
+export const AVISO_ILEGIVEL =
+  'Não consegui ler este recibo. Tente uma foto mais reta e com boa luz.';
+
+function avisoDaLeitura(recibo: DadosRecibo | null): string {
+  if (!recibo || Object.values(recibo).every(campo => campo === null)) {
+    return AVISO_ILEGIVEL;
+  }
+  if (recibo.valorCentavos === null) {
+    return AVISO_SEM_VALOR;
+  }
+  return [
+    `Lido do recibo: ${formatarCentavos(recibo.valorCentavos)}`,
+    recibo.data && formatarDiaComAno(recibo.data),
+  ]
+    .filter(Boolean)
+    .join(' · ');
 }
 
 interface AlertaDuplicata {
@@ -71,7 +114,7 @@ interface AlertaDuplicata {
   duplicatas: PossivelDuplicata[];
 }
 
-type OrigemMenu = 'camera' | 'trocar';
+type OrigemMenu = 'camera' | 'trocar' | 'recibo';
 
 function NovoLancamentoSheet({
   visivel,
@@ -81,6 +124,8 @@ function NovoLancamentoSheet({
   onExcluir,
   onVerificarDuplicatas,
   seletorImagem = seletorImagemPadrao,
+  seletorData = seletorDataPadrao,
+  lerRecibo = lerReciboPadrao,
 }: Props): React.JSX.Element {
   const emEdicao = Boolean(transacao);
   const insets = useSafeAreaInsets();
@@ -100,6 +145,11 @@ function NovoLancamentoSheet({
   const [menuAberto, setMenuAberto] = useState<OrigemMenu | null>(null);
   const [visualizando, setVisualizando] = useState(false);
   const [alerta, setAlerta] = useState<AlertaDuplicata | null>(null);
+  const [data, setData] = useState(hojeISO());
+  const [lendoRecibo, setLendoRecibo] = useState(false);
+  const [avisoRecibo, setAvisoRecibo] = useState<AvisoRecibo | null>(null);
+  // Fechar ou reabrir o sheet invalida uma leitura que ainda não terminou.
+  const leituraAtual = useRef(0);
 
   useEffect(() => {
     if (!visivel) {
@@ -110,6 +160,10 @@ function NovoLancamentoSheet({
     setRecorrencia(transacao?.recorrencia ?? 'variavel');
     setCategoria(transacao?.categoria ?? null);
     setDescricao(transacao?.descricao ?? '');
+    setData(transacao?.data ?? hojeISO());
+    setLendoRecibo(false);
+    setAvisoRecibo(null);
+    leituraAtual.current++;
     setErros({});
     setSalvando(false);
     setConfirmandoExclusao(false);
@@ -122,7 +176,10 @@ function NovoLancamentoSheet({
     setAlerta(null);
   }, [visivel, transacao]);
 
-  const ocupado = salvando || excluindo;
+  const ocupado = salvando || excluindo || lendoRecibo;
+  const hoje = hojeISO();
+  const ontem = somarDias(hoje, -1);
+  const outraData = data !== hoje && data !== ontem;
   const corTipo = corDoTipo(tipo);
   const centavos = paraCentavos(valor);
   const temValor = centavos > 0;
@@ -139,7 +196,10 @@ function NovoLancamentoSheet({
     setErros({});
   };
 
-  const anexarComprovante = async (origem: 'camera' | 'galeria') => {
+  // Devolve a uri anexada, ou null se a pessoa desistiu ou a imagem é inválida.
+  const anexarComprovante = async (
+    origem: 'camera' | 'galeria',
+  ): Promise<string | null> => {
     setMenuAberto(null);
     try {
       const imagem =
@@ -147,15 +207,79 @@ function NovoLancamentoSheet({
           ? await seletorImagem.tirarFoto()
           : await seletorImagem.escolherDaGaleria();
       if (!imagem) {
-        return;
+        return null;
       }
       const erro = validarImagemComprovante(imagem);
       if (erro) {
         setMensagemErro(erro);
-        return;
+        return null;
       }
       setComprovanteUri(imagem.uri);
       setMiniaturaFalhou(false);
+      return imagem.uri;
+    } catch (erro) {
+      setMensagemErro(mensagemDeErro(erro));
+      return null;
+    }
+  };
+
+  const escanearRecibo = async (origem: 'camera' | 'galeria') => {
+    const uri = await anexarComprovante(origem);
+    if (!uri) {
+      return;
+    }
+    const leitura = ++leituraAtual.current;
+    setAvisoRecibo(null);
+    setLendoRecibo(true);
+    const recibo = await lerRecibo.ler(uri, hojeISO());
+    if (leitura !== leituraAtual.current) {
+      return;
+    }
+    setLendoRecibo(false);
+    const antes = {valor, data, descricao};
+    let preencheu = false;
+    if (recibo?.valorCentavos != null) {
+      setValor(centavosParaDigitado(recibo.valorCentavos));
+      setErros(({valorCentavos: _, ...resto}) => resto);
+      preencheu = true;
+    }
+    if (recibo?.data) {
+      setData(recibo.data);
+      setErros(({data: _, ...resto}) => resto);
+      preencheu = true;
+    }
+    if (recibo?.estabelecimento && descricao.trim() === '') {
+      setDescricao(recibo.estabelecimento);
+      preencheu = true;
+    }
+    setAvisoRecibo({
+      mensagem: avisoDaLeitura(recibo),
+      antes: preencheu ? antes : null,
+    });
+  };
+
+  // Volta só os campos: a foto continua anexada como comprovante.
+  const desfazerRecibo = () => {
+    const antes = avisoRecibo?.antes;
+    if (antes) {
+      setValor(antes.valor);
+      setData(antes.data);
+      setDescricao(antes.descricao);
+    }
+    setAvisoRecibo(null);
+  };
+
+  const mudarData = (novaData: string) => {
+    setData(novaData);
+    setErros(({data: _, ...resto}) => resto);
+  };
+
+  const escolherData = async () => {
+    try {
+      const escolhida = await seletorData.escolher(data, hoje);
+      if (escolhida && dataISOValida(escolhida)) {
+        mudarData(escolhida);
+      }
     } catch (erro) {
       setMensagemErro(mensagemDeErro(erro));
     }
@@ -165,6 +289,23 @@ function NovoLancamentoSheet({
     setComprovanteUri(null);
     setMiniaturaFalhou(false);
   };
+
+  const itensMenuRecibo = (
+    <>
+      <Menu.Item
+        leadingIcon="camera"
+        title="Tirar foto"
+        onPress={() => escanearRecibo('camera')}
+        testID="menu-recibo-tirar-foto"
+      />
+      <Menu.Item
+        leadingIcon="image"
+        title="Escolher da galeria"
+        onPress={() => escanearRecibo('galeria')}
+        testID="menu-recibo-galeria"
+      />
+    </>
+  );
 
   const itensMenuComprovante = (
     <>
@@ -195,16 +336,19 @@ function NovoLancamentoSheet({
   };
 
   const salvar = async () => {
-    const resultado = validarTransacao({
-      tipo,
-      valorCentavos: centavos,
-      categoria: categoria ?? '',
-      descricao,
-      data: transacao?.data ?? hojeISO(),
-      recorrencia: tipo === 'receita' ? recorrencia : 'variavel',
-      comprovanteUri: tipo === 'despesa' ? comprovanteUri : null,
-      contaRecorrenteId: transacao?.contaRecorrenteId ?? null,
-    });
+    const resultado = validarTransacao(
+      {
+        tipo,
+        valorCentavos: centavos,
+        categoria: categoria ?? '',
+        descricao,
+        data,
+        recorrencia: tipo === 'receita' ? recorrencia : 'variavel',
+        comprovanteUri: tipo === 'despesa' ? comprovanteUri : null,
+        contaRecorrenteId: transacao?.contaRecorrenteId ?? null,
+      },
+      hojeISO(),
+    );
     if (!resultado.valido) {
       setErros(resultado.erros);
       return;
@@ -374,6 +518,127 @@ function NovoLancamentoSheet({
                 </View>
                 {erros.valorCentavos && (
                   <HelperText type="error">{erros.valorCentavos}</HelperText>
+                )}
+              </View>
+
+              {tipo === 'despesa' && (
+                <View style={styles.blocoRecibo}>
+                  <Menu
+                    visible={menuAberto === 'recibo'}
+                    onDismiss={() => setMenuAberto(null)}
+                    anchor={
+                      <Button
+                        mode="outlined"
+                        icon="line-scan"
+                        textColor={CORES.azul}
+                        style={styles.botaoRecibo}
+                        onPress={() => setMenuAberto('recibo')}
+                        disabled={ocupado}
+                        testID="botao-escanear-recibo">
+                        Escanear recibo
+                      </Button>
+                    }>
+                    {itensMenuRecibo}
+                  </Menu>
+                  {lendoRecibo && (
+                    <View style={styles.lendoRecibo} testID="lendo-recibo">
+                      <ActivityIndicator color={CORES.azul} />
+                      <Text style={styles.textoRecibo}>Lendo recibo...</Text>
+                    </View>
+                  )}
+                  {avisoRecibo && (
+                    <View style={styles.avisoRecibo} testID="aviso-recibo">
+                      <Text
+                        style={styles.textoRecibo}
+                        testID="aviso-recibo-texto">
+                        {avisoRecibo.mensagem}
+                      </Text>
+                      {avisoRecibo.antes && (
+                        <Button
+                          mode="text"
+                          compact
+                          textColor={CORES.azul}
+                          onPress={desfazerRecibo}
+                          disabled={ocupado}
+                          testID="desfazer-recibo">
+                          Desfazer
+                        </Button>
+                      )}
+                    </View>
+                  )}
+                </View>
+              )}
+
+              <View>
+                <Text style={styles.rotuloSecao}>Data</Text>
+                <View style={styles.linhaData}>
+                  {[
+                    {id: 'hoje', rotulo: 'Hoje', valor: hoje},
+                    {id: 'ontem', rotulo: 'Ontem', valor: ontem},
+                  ].map(opcao => {
+                    const selecionada = data === opcao.valor;
+                    return (
+                      <Pressable
+                        key={opcao.id}
+                        onPress={() => mudarData(opcao.valor)}
+                        disabled={ocupado}
+                        accessibilityRole="radio"
+                        accessibilityState={{checked: selecionada}}
+                        accessibilityLabel={opcao.rotulo}
+                        testID={`data-${opcao.id}`}
+                        style={[
+                          styles.chipData,
+                          selecionada && {
+                            backgroundColor: comAlfa(corTipo, 0.125),
+                            borderColor: comAlfa(corTipo, 0.375),
+                          },
+                        ]}>
+                        <Text
+                          style={[
+                            styles.textoChipData,
+                            selecionada && {color: corTipo},
+                          ]}>
+                          {opcao.rotulo}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                  <Pressable
+                    onPress={escolherData}
+                    disabled={ocupado}
+                    accessibilityRole="radio"
+                    accessibilityState={{checked: outraData}}
+                    accessibilityLabel={
+                      outraData
+                        ? `Data: ${formatarCabecalhoDia(data)}. Escolher outra`
+                        : 'Escolher outra data'
+                    }
+                    testID="data-outra"
+                    style={[
+                      styles.chipData,
+                      outraData && {
+                        backgroundColor: comAlfa(corTipo, 0.125),
+                        borderColor: comAlfa(corTipo, 0.375),
+                      },
+                    ]}>
+                    <Icon
+                      source="calendar"
+                      size={16}
+                      color={outraData ? corTipo : CORES.textoSecundario}
+                    />
+                    {outraData && (
+                      <Text
+                        style={[styles.textoChipData, {color: corTipo}]}
+                        testID="data-outra-texto">
+                        {formatarCabecalhoDia(data)}
+                      </Text>
+                    )}
+                  </Pressable>
+                </View>
+                {erros.data && (
+                  <HelperText type="error" testID="erro-data">
+                    {erros.data}
+                  </HelperText>
                 )}
               </View>
 
@@ -770,6 +1035,56 @@ const styles = StyleSheet.create({
     fontFamily: FONTES.monoExtraNegrito,
     fontSize: 44,
     letterSpacing: -0.9,
+  },
+  blocoRecibo: {
+    gap: 8,
+  },
+  botaoRecibo: {
+    borderColor: 'rgba(100,181,246,0.35)',
+    borderRadius: 12,
+  },
+  lendoRecibo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  avisoRecibo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+    paddingVertical: 6,
+    paddingLeft: 12,
+    paddingRight: 4,
+    borderRadius: 12,
+    backgroundColor: 'rgba(100,181,246,0.1)',
+  },
+  textoRecibo: {
+    flexShrink: 1,
+    fontFamily: FONTES.regular,
+    fontSize: 12,
+    color: CORES.texto,
+  },
+  linhaData: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  chipData: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    backgroundColor: CORES.realce,
+  },
+  textoChipData: {
+    fontFamily: FONTES.medio,
+    fontSize: 13,
+    color: CORES.textoSecundario,
   },
   linhaChips: {
     flexDirection: 'row',

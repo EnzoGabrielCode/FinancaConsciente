@@ -12,7 +12,10 @@ export interface ResultadoValidacao {
   dados: DadosTransacao;
 }
 
-export function validarTransacao(dados: DadosTransacao): ResultadoValidacao {
+export function validarTransacao(
+  dados: DadosTransacao,
+  hoje: string,
+): ResultadoValidacao {
   const erros: ErrosTransacao = {};
 
   if (dados.tipo !== 'receita' && dados.tipo !== 'despesa') {
@@ -35,6 +38,8 @@ export function validarTransacao(dados: DadosTransacao): ResultadoValidacao {
 
   if (!dataISOValida(dados.data)) {
     erros.data = 'Informe uma data válida (AAAA-MM-DD).';
+  } else if (dados.data > hoje) {
+    erros.data = 'A data não pode ser no futuro.';
   }
 
   if (dados.recorrencia !== 'fixa' && dados.recorrencia !== 'variavel') {

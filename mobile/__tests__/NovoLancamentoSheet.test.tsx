@@ -24,6 +24,8 @@ import type {CofreRepository} from '../src/domain/repositories/CofreRepository';
 import type {TransacaoRepository} from '../src/domain/repositories/TransacaoRepository';
 import AlertaDuplicataDialog from '../src/presentation/components/AlertaDuplicataDialog';
 import NovoLancamentoSheet from '../src/presentation/components/NovoLancamentoSheet';
+import type {LerRecibo} from '../src/domain/casosDeUso/LerRecibo';
+import type {SeletorData} from '../src/presentation/servicos/seletorData';
 import type {ContaRecorrenteRepository} from '../src/domain/repositories/ContaRecorrenteRepository';
 import type {Notificador} from '../src/domain/repositories/Notificador';
 import type {OrcamentoRepository} from '../src/domain/repositories/OrcamentoRepository';
@@ -1035,6 +1037,354 @@ describe('HomeScreen: dashboard', () => {
     });
 
     expect(textoDe(porId('saldo-atual'))).toBe('R$ -89,90');
+  });
+});
+
+describe('NovoLancamentoSheet: data e recibo', () => {
+  const HOJE = '2026-11-08';
+  let onSalvar: jest.Mock<(dados: DadosTransacao) => Promise<void>>;
+  let onVerificarDuplicatas: jest.Mock<
+    (dados: DadosTransacao) => Promise<PossivelDuplicata[]>
+  >;
+  let escolher: jest.Mock<SeletorData['escolher']>;
+  let ler: jest.Mock<LerRecibo['ler']>;
+
+  beforeEach(() => {
+    jest.useFakeTimers({now: new Date(2026, 10, 8, 12)});
+    seletor = criarSeletorFake();
+    onSalvar = jest.fn(async () => {});
+    onVerificarDuplicatas = jest.fn(async () => []);
+    escolher = jest.fn<SeletorData['escolher']>(async () => '2026-11-03');
+    ler = jest.fn<LerRecibo['ler']>(async () => ({
+      valorCentavos: 8990,
+      data: '2026-11-03',
+      estabelecimento: 'Supermercado Bom Preco Ltda',
+    }));
+  });
+
+  afterEach(async () => {
+    await act(async () => {
+      jest.runOnlyPendingTimers();
+      tree.unmount();
+    });
+    jest.useRealTimers();
+  });
+
+  async function abrir(transacao: Transacao | null = null) {
+    await act(async () => {
+      tree = renderer.create(
+        <PaperProvider theme={darkTheme}>
+          <NovoLancamentoSheet
+            visivel
+            transacao={transacao}
+            onFechar={() => {}}
+            onSalvar={onSalvar}
+            onVerificarDuplicatas={onVerificarDuplicatas}
+            seletorImagem={seletor}
+            seletorData={{escolher}}
+            lerRecibo={{ler}}
+          />
+        </PaperProvider>,
+      );
+    });
+  }
+
+  const marcado = (id: string) =>
+    tree.root.findAll(
+      no => no.props.testID === id && no.props.accessibilityRole === 'radio',
+    )[0].props.accessibilityState.checked;
+  const descricaoDigitada = () =>
+    tree.root.findAll(
+      no =>
+        no.props.testID === 'descricao-input' &&
+        typeof no.props.onChangeText === 'function',
+    )[0].props.value;
+  const escrever = async (texto: string) =>
+    act(async () => {
+      tree.root
+        .findAll(
+          no =>
+            no.props.testID === 'descricao-input' &&
+            typeof no.props.onChangeText === 'function',
+        )[0]
+        .props.onChangeText(texto);
+    });
+  const aviso = () => textoDe(porId('aviso-recibo-texto'));
+
+  async function escanear() {
+    await tocar('botao-escanear-recibo');
+    await tocar('menu-recibo-galeria');
+  }
+
+  // Sem esperar o onPress: a leitura fica pendente de propósito.
+  async function escanearSemEsperar() {
+    await tocar('botao-escanear-recibo');
+    const [item] = tree.root.findAll(
+      no =>
+        no.props.testID === 'menu-recibo-galeria' &&
+        typeof no.props.onPress === 'function',
+    );
+    await act(async () => {
+      item.props.onPress();
+    });
+  }
+
+  async function salvarDespesa() {
+    await tocar('categoria-alimentacao');
+    await tocar('botao-salvar');
+  }
+
+  describe('data', () => {
+    it('começa em Hoje e Ontem muda a data salva', async () => {
+      await abrir();
+      expect(marcado('data-hoje')).toBe(true);
+      expect(existe('data-outra-texto')).toBe(false);
+
+      await tocar('data-ontem');
+      expect(marcado('data-ontem')).toBe(true);
+      expect(marcado('data-hoje')).toBe(false);
+
+      await digitar('1', '0');
+      await salvarDespesa();
+      expect(onSalvar).toHaveBeenCalledWith(
+        expect.objectContaining({data: '2026-11-07'}),
+      );
+    });
+
+    it('o calendário abre com a data atual e hoje como máximo', async () => {
+      await abrir();
+      await tocar('data-outra');
+
+      expect(escolher).toHaveBeenCalledWith(HOJE, HOJE);
+      expect(textoDe(porId('data-outra-texto'))).toBe('3 de nov.');
+      expect(marcado('data-outra')).toBe(true);
+
+      await digitar('1', '0');
+      await salvarDespesa();
+      expect(onSalvar).toHaveBeenCalledWith(
+        expect.objectContaining({data: '2026-11-03'}),
+      );
+    });
+
+    it('cancelar o calendário mantém a data', async () => {
+      escolher.mockResolvedValueOnce(null);
+      await abrir();
+      await tocar('data-outra');
+      expect(marcado('data-hoje')).toBe(true);
+    });
+
+    it('recusa data no futuro', async () => {
+      escolher.mockResolvedValueOnce('2026-11-10');
+      await abrir();
+      await tocar('data-outra');
+      await digitar('1', '0');
+      await salvarDespesa();
+
+      expect(onSalvar).not.toHaveBeenCalled();
+      expect(textoDe(porId('erro-data'))).toBe(
+        'A data não pode ser no futuro.',
+      );
+    });
+
+    it('na edição mostra e mantém a data da transação', async () => {
+      await abrir({...despesa, data: '2026-10-20'});
+      expect(textoDe(porId('data-outra-texto'))).toBe('20 de out.');
+
+      await tocar('botao-salvar');
+      expect(onSalvar).toHaveBeenCalledWith(
+        expect.objectContaining({data: '2026-10-20'}),
+      );
+    });
+
+    it('na edição de outro ano mostra o ano', async () => {
+      await abrir({...despesa, data: '2025-12-20'});
+      expect(textoDe(porId('data-outra-texto'))).toBe('20 de dez. de 2025');
+    });
+  });
+
+  describe('scanner de recibo', () => {
+    it('só aparece em despesa', async () => {
+      await abrir();
+      expect(existe('botao-escanear-recibo')).toBe(true);
+      await tocar('tipo-receita');
+      expect(existe('botao-escanear-recibo')).toBe(false);
+    });
+
+    it('preenche valor, data e descrição e anexa a foto', async () => {
+      await abrir();
+      await escanear();
+
+      expect(ler).toHaveBeenCalledWith(FOTO.uri, HOJE);
+      expect(textoDe(porId('valor-display'))).toBe('89,90');
+      expect(descricaoDigitada()).toBe('Supermercado Bom Preco Ltda');
+      expect(textoDe(porId('data-outra-texto'))).toBe('3 de nov.');
+      expect(aviso()).toBe('Lido do recibo: R$ 89,90 · 3 de nov.');
+      expect(existe('comprovante-anexado')).toBe(true);
+      expect(onSalvar).not.toHaveBeenCalled();
+    });
+
+    it('mostra o ano no aviso e no chip quando o recibo é de outro ano', async () => {
+      ler.mockResolvedValueOnce({
+        valorCentavos: 8990,
+        data: '2025-12-20',
+        estabelecimento: null,
+      });
+      await abrir();
+      await escanear();
+
+      expect(aviso()).toBe('Lido do recibo: R$ 89,90 · 20 de dez. de 2025');
+      expect(textoDe(porId('data-outra-texto'))).toBe('20 de dez. de 2025');
+    });
+
+    it('salva só ao tocar em Salvar, com a data lida', async () => {
+      await abrir();
+      await escanear();
+      await salvarDespesa();
+
+      expect(onVerificarDuplicatas).toHaveBeenCalledWith(
+        expect.objectContaining({valorCentavos: 8990, data: '2026-11-03'}),
+      );
+      expect(onSalvar).toHaveBeenCalledWith(
+        expect.objectContaining({
+          valorCentavos: 8990,
+          data: '2026-11-03',
+          descricao: 'Supermercado Bom Preco Ltda',
+          comprovanteUri: FOTO.uri,
+        }),
+      );
+    });
+
+    it('não sobrescreve a descrição já digitada', async () => {
+      await abrir();
+      await escrever('Compras do mês');
+      await escanear();
+
+      expect(descricaoDigitada()).toBe('Compras do mês');
+      expect(textoDe(porId('valor-display'))).toBe('89,90');
+    });
+
+    it('Desfazer volta valor, data e descrição e mantém a foto', async () => {
+      await abrir();
+      await digitar('5');
+      await tocar('data-ontem');
+      await escanear();
+
+      await tocar('desfazer-recibo');
+
+      expect(textoDe(porId('valor-display'))).toBe('5');
+      expect(marcado('data-ontem')).toBe(true);
+      expect(descricaoDigitada()).toBe('');
+      expect(existe('comprovante-anexado')).toBe(true);
+      expect(existe('aviso-recibo')).toBe(false);
+    });
+
+    it('mostra "Lendo recibo..." e trava os botões enquanto lê', async () => {
+      let terminar!: () => void;
+      ler.mockImplementationOnce(
+        () =>
+          new Promise(resolve => {
+            terminar = () =>
+              resolve({valorCentavos: 100, data: null, estabelecimento: null});
+          }),
+      );
+      await abrir();
+      await digitar('5');
+      await escanearSemEsperar();
+
+      expect(existe('lendo-recibo')).toBe(true);
+      expect(botaoSalvar().props.accessibilityState.disabled).toBe(true);
+
+      await act(async () => terminar());
+
+      expect(existe('lendo-recibo')).toBe(false);
+      expect(botaoSalvar().props.accessibilityState.disabled).toBe(false);
+      expect(aviso()).toBe('Lido do recibo: R$ 1,00');
+    });
+
+    it('sem valor pede para digitar', async () => {
+      ler.mockResolvedValueOnce({
+        valorCentavos: null,
+        data: '2026-11-03',
+        estabelecimento: null,
+      });
+      await abrir();
+      await escanear();
+
+      expect(aviso()).toBe('Não consegui ler o valor. Digite manualmente.');
+      expect(textoDe(porId('data-outra-texto'))).toBe('3 de nov.');
+      expect(existe('desfazer-recibo')).toBe(true);
+    });
+
+    it.each([
+      [
+        'nada foi lido',
+        {valorCentavos: null, data: null, estabelecimento: null},
+      ],
+      ['o ML Kit falhou', null],
+    ])('quando %s pede outra foto', async (_, recibo) => {
+      ler.mockResolvedValueOnce(recibo);
+      await abrir();
+      await escanear();
+
+      expect(aviso()).toBe(
+        'Não consegui ler este recibo. Tente uma foto mais reta e com boa luz.',
+      );
+      expect(existe('desfazer-recibo')).toBe(false);
+      expect(existe('comprovante-anexado')).toBe(true);
+    });
+
+    it('não lê imagem que não serve de comprovante', async () => {
+      seletor = criarSeletorFake({...FOTO, tipoMime: 'application/pdf'});
+      await abrir();
+      await escanear();
+
+      expect(ler).not.toHaveBeenCalled();
+      expect(existe('comprovante-anexado')).toBe(false);
+    });
+
+    it('desistir da foto não lê nada', async () => {
+      seletor = criarSeletorFake(null);
+      await abrir();
+      await escanear();
+
+      expect(ler).not.toHaveBeenCalled();
+      expect(existe('aviso-recibo')).toBe(false);
+    });
+
+    it('uma leitura que termina depois de fechar o sheet é ignorada', async () => {
+      let terminar!: () => void;
+      ler.mockImplementationOnce(
+        () =>
+          new Promise(resolve => {
+            terminar = () =>
+              resolve({valorCentavos: 8990, data: null, estabelecimento: null});
+          }),
+      );
+      await abrir();
+      await escanearSemEsperar();
+
+      const reabrir = (visivel: boolean) =>
+        act(async () => {
+          tree.update(
+            <PaperProvider theme={darkTheme}>
+              <NovoLancamentoSheet
+                visivel={visivel}
+                onFechar={() => {}}
+                onSalvar={onSalvar}
+                seletorImagem={seletor}
+                seletorData={{escolher}}
+                lerRecibo={{ler}}
+              />
+            </PaperProvider>,
+          );
+        });
+      await reabrir(false);
+      await reabrir(true);
+      await act(async () => terminar());
+
+      expect(textoDe(porId('valor-display'))).toBe('0,00');
+      expect(existe('aviso-recibo')).toBe(false);
+    });
   });
 });
 
