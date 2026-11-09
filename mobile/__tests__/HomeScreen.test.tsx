@@ -8,6 +8,8 @@ import type {Transacao} from '../src/domain/entities/Transacao';
 import type {ArmazenamentoComprovantes} from '../src/domain/repositories/ArmazenamentoComprovantes';
 import type {CofreRepository} from '../src/domain/repositories/CofreRepository';
 import type {ContaRecorrenteRepository} from '../src/domain/repositories/ContaRecorrenteRepository';
+import type {ExportadorArquivos} from '../src/domain/repositories/ExportadorArquivos';
+import type {GeradorPdf} from '../src/domain/repositories/GeradorPdf';
 import type {Notificador} from '../src/domain/repositories/Notificador';
 import type {OrcamentoRepository} from '../src/domain/repositories/OrcamentoRepository';
 import type {TransacaoRepository} from '../src/domain/repositories/TransacaoRepository';
@@ -21,6 +23,7 @@ const repositorio: TransacaoRepository = {
   gastosPorCategoria: async () => ({}),
   lancarRecorrente: async () => true,
   exemplosDeCategoria: async () => [],
+  listarPorPeriodo: async () => [],
   buscarPorId: async () => null,
   criar: async () => 1,
   atualizar: async () => {},
@@ -55,6 +58,16 @@ const notificador: Notificador = {
   cancelarComPrefixo: async () => {},
 };
 
+const exportador: ExportadorArquivos = {
+  salvarTexto: async nome => `/cache/relatorios/${nome}`,
+  salvarBase64: async nome => `/cache/relatorios/${nome}`,
+  compartilhar: async () => {},
+};
+
+const geradorPdf: GeradorPdf = {
+  gerar: async () => 'JVBERi0=',
+};
+
 const repositorioContas: ContaRecorrenteRepository = {
   listar: async () => [],
   buscarPorId: async () => null,
@@ -84,6 +97,8 @@ async function renderizar(repositorioTela = repositorio) {
           repositorioOrcamentos={repositorioOrcamentos}
           repositorioContas={repositorioContas}
           notificador={notificador}
+          exportador={exportador}
+          geradorPdf={geradorPdf}
         />
       </PaperProvider>,
     );
@@ -120,6 +135,25 @@ describe('HomeScreen: barra de navegação', () => {
     for (const id of ['aba-planejamento', 'aba-desafios', 'aba-assistente']) {
       expect(aba(id).props.accessibilityState).toEqual({selected: false});
     }
+  });
+
+  it('o botão de relatórios abre a tela Relatórios', async () => {
+    await renderizar();
+    const tela = () =>
+      tree.root.findAll(no => no.props.testID === 'relatorios-screen');
+    expect(tela()).toHaveLength(0);
+
+    const [botao] = tree.root.findAll(
+      no =>
+        no.props.testID === 'botao-relatorios' &&
+        no.props.accessibilityLabel === 'Relatórios' &&
+        typeof no.props.onPress === 'function',
+    );
+    await act(async () => {
+      botao.props.onPress();
+    });
+
+    expect(tela().length).toBeGreaterThan(0);
   });
 
   it('avisa "Disponível em breve" ao tocar numa aba inativa', async () => {
@@ -261,6 +295,8 @@ describe('HomeScreen: contas fixas', () => {
               buscarPorId: async id => contas.find(c => c.id === id) ?? null,
             }}
             notificador={notificador}
+            exportador={exportador}
+            geradorPdf={geradorPdf}
           />
         </PaperProvider>,
       );

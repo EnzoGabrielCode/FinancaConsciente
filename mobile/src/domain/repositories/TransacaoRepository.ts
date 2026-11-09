@@ -1,5 +1,6 @@
 import type {TotaisMes} from '../entities/Dashboard';
 import type {CandidataDuplicata} from '../entities/Duplicata';
+import type {FiltroRelatorio} from '../entities/Relatorio';
 import type {
   DadosTransacao,
   TipoTransacao,
@@ -23,6 +24,7 @@ export interface TransacaoRepository {
   totaisPorMes(deAnoMes: string, ateAnoMes: string): Promise<TotaisMes[]>;
   gastosPorCategoria(anoMes: string): Promise<Record<string, number>>;
   exemplosDeCategoria(limite?: number): Promise<ExemploCategoria[]>;
+  listarPorPeriodo(filtro: FiltroRelatorio): Promise<Transacao[]>;
   buscarCandidatasDuplicata(
     tipo: TipoTransacao,
     valorCentavos: number,

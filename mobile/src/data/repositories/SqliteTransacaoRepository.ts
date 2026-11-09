@@ -3,6 +3,7 @@ import type {ResultSet, SQLiteDatabase} from 'react-native-sqlite-storage';
 import {dataISOValida, ultimoDiaDoMes} from '../../domain/datas';
 import type {TotaisMes} from '../../domain/entities/Dashboard';
 import type {CandidataDuplicata} from '../../domain/entities/Duplicata';
+import type {FiltroRelatorio} from '../../domain/entities/Relatorio';
 import type {
   DadosTransacao,
   TipoTransacao,
@@ -229,6 +230,32 @@ export class SqliteTransacaoRepository implements TransacaoRepository {
       gastos[linha.categoria] = Number(linha.total ?? 0);
     }
     return gastos;
+  }
+
+  async listarPorPeriodo({
+    de,
+    ate,
+    tipo,
+    categoria,
+  }: FiltroRelatorio): Promise<Transacao[]> {
+    // Só trechos fixos entram no SQL; os valores vão sempre nos parâmetros.
+    const condicoes = ['data BETWEEN ? AND ?'];
+    const parametros: (string | number)[] = [de, ate];
+    if (tipo !== 'todos') {
+      condicoes.push('tipo = ?');
+      parametros.push(tipo);
+    }
+    if (categoria !== null) {
+      condicoes.push('categoria = ?');
+      parametros.push(categoria);
+    }
+    const resultado = await this.executar(
+      `SELECT ${COLUNAS} FROM transacoes
+        WHERE ${condicoes.join(' AND ')}
+        ORDER BY data, id`,
+      parametros,
+    );
+    return linhas<LinhaTransacao>(resultado).map(paraTransacao);
   }
 
   async exemplosDeCategoria(limite = 500): Promise<ExemploCategoria[]> {

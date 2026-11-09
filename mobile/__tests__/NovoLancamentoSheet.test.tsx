@@ -28,6 +28,8 @@ import type {LerRecibo} from '../src/domain/casosDeUso/LerRecibo';
 import {SugerirCategoria} from '../src/domain/casosDeUso/SugerirCategoria';
 import type {SeletorData} from '../src/presentation/servicos/seletorData';
 import type {ContaRecorrenteRepository} from '../src/domain/repositories/ContaRecorrenteRepository';
+import type {ExportadorArquivos} from '../src/domain/repositories/ExportadorArquivos';
+import type {GeradorPdf} from '../src/domain/repositories/GeradorPdf';
 import type {Notificador} from '../src/domain/repositories/Notificador';
 import type {OrcamentoRepository} from '../src/domain/repositories/OrcamentoRepository';
 import HomeScreen from '../src/presentation/screens/HomeScreen';
@@ -54,6 +56,8 @@ class RepositorioEmMemoria implements TransacaoRepository {
   );
 
   lancarRecorrente = jest.fn(async () => true);
+
+  listarPorPeriodo = jest.fn(async () => [...this.transacoes]);
 
   exemplosDeCategoria = jest.fn(async () =>
     this.transacoes
@@ -270,6 +274,16 @@ const notificador: Notificador = {
   cancelarComPrefixo: async () => {},
 };
 
+const exportador: ExportadorArquivos = {
+  salvarTexto: async nome => `/cache/relatorios/${nome}`,
+  salvarBase64: async nome => `/cache/relatorios/${nome}`,
+  compartilhar: async () => {},
+};
+
+const geradorPdf: GeradorPdf = {
+  gerar: async () => 'JVBERi0=',
+};
+
 const repositorioContas: ContaRecorrenteRepository = {
   listar: async () => [],
   buscarPorId: async () => null,
@@ -291,6 +305,8 @@ async function renderizar(repositorio: TransacaoRepository) {
           repositorioOrcamentos={orcamentosRepo}
           repositorioContas={repositorioContas}
           notificador={notificador}
+          exportador={exportador}
+          geradorPdf={geradorPdf}
           seletorImagem={seletor}
         />
       </PaperProvider>,

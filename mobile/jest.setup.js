@@ -23,4 +23,9 @@ jest.mock('@react-native-community/datetimepicker', () => ({
   DateTimePickerAndroid: {open: jest.fn(), dismiss: jest.fn()},
 }));
 
+jest.mock('react-native-share', () => ({
+  __esModule: true,
+  default: {open: jest.fn(async () => ({success: true}))},
+}));
+
 require('@shopify/flash-list/jestSetup');

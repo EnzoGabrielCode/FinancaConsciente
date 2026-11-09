@@ -23,6 +23,7 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {DATABASE_NAME} from '../../data/database/connection';
 import {GerenciarCofres} from '../../domain/casosDeUso/GerenciarCofres';
 import {GerenciarContasRecorrentes} from '../../domain/casosDeUso/GerenciarContasRecorrentes';
+import {GerarRelatorios} from '../../domain/casosDeUso/GerarRelatorios';
 import {SugerirCategoria} from '../../domain/casosDeUso/SugerirCategoria';
 import {GerenciarOrcamentos} from '../../domain/casosDeUso/GerenciarOrcamentos';
 import {hojeISO, saudacao} from '../../domain/datas';
@@ -31,6 +32,8 @@ import {textoContasLancadas} from '../../domain/recorrencia';
 import type {ArmazenamentoComprovantes} from '../../domain/repositories/ArmazenamentoComprovantes';
 import type {CofreRepository} from '../../domain/repositories/CofreRepository';
 import type {ContaRecorrenteRepository} from '../../domain/repositories/ContaRecorrenteRepository';
+import type {ExportadorArquivos} from '../../domain/repositories/ExportadorArquivos';
+import type {GeradorPdf} from '../../domain/repositories/GeradorPdf';
 import type {Notificador} from '../../domain/repositories/Notificador';
 import type {OrcamentoRepository} from '../../domain/repositories/OrcamentoRepository';
 import type {TransacaoRepository} from '../../domain/repositories/TransacaoRepository';
@@ -52,6 +55,7 @@ import {ESTILO_SNACKBAR, TEMA_SNACKBAR} from '../theme';
 import {mensagemDeErro} from '../utils/mensagemDeErro';
 import CofresScreen from './CofresScreen';
 import OrcamentosScreen from './OrcamentosScreen';
+import RelatoriosScreen from './RelatoriosScreen';
 import TransacoesScreen from './TransacoesScreen';
 
 function DatabaseIcon(props: {size: number}): React.JSX.Element {
@@ -65,6 +69,8 @@ interface Props {
   repositorioOrcamentos: OrcamentoRepository;
   repositorioContas: ContaRecorrenteRepository;
   notificador: Notificador;
+  exportador: ExportadorArquivos;
+  geradorPdf: GeradorPdf;
   seletorImagem?: SeletorImagem;
 }
 
@@ -103,6 +109,8 @@ function HomeScreen({
   repositorioOrcamentos,
   repositorioContas,
   notificador,
+  exportador,
+  geradorPdf,
   seletorImagem,
 }: Props): React.JSX.Element {
   const theme = useTheme();
@@ -173,6 +181,11 @@ function HomeScreen({
   });
   const [telaTransacoes, setTelaTransacoes] = useState(false);
   const [telaOrcamentos, setTelaOrcamentos] = useState(false);
+  const [telaRelatorios, setTelaRelatorios] = useState(false);
+  const gerarRelatorios = useMemo(
+    () => new GerarRelatorios(repositorio, exportador, geradorPdf),
+    [repositorio, exportador, geradorPdf],
+  );
 
   const [sheet, setSheet] = useState<EstadoSheet>({
     visivel: false,
@@ -306,10 +319,21 @@ function HomeScreen({
       <View
         style={[styles.cabecalho, {paddingTop: insets.top + 20}]}
         accessibilityRole="header">
-        <Text style={styles.saudacao} testID="saudacao">
-          {saudacao()}
-        </Text>
-        <Text style={styles.marca}>FinançaConsciente</Text>
+        <View style={styles.textosCabecalho}>
+          <Text style={styles.saudacao} testID="saudacao">
+            {saudacao()}
+          </Text>
+          <Text style={styles.marca}>FinançaConsciente</Text>
+        </View>
+        <Pressable
+          onPress={() => setTelaRelatorios(true)}
+          accessibilityRole="button"
+          accessibilityLabel="Relatórios"
+          hitSlop={8}
+          testID="botao-relatorios"
+          style={styles.botaoCabecalho}>
+          <Icon source="chart-box-outline" size={22} color={CORES.texto} />
+        </Pressable>
       </View>
 
       <View style={styles.corpo}>
@@ -529,6 +553,12 @@ function HomeScreen({
         onFechar={() => setTelaTransacoes(false)}
       />
 
+      <RelatoriosScreen
+        visivel={telaRelatorios}
+        gerar={gerarRelatorios}
+        onFechar={() => setTelaRelatorios(false)}
+      />
+
       <OrcamentosScreen
         visivel={telaOrcamentos}
         orcamentos={orcamentos}
@@ -550,7 +580,20 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   cabecalho: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 20,
+  },
+  textosCabecalho: {
+    flex: 1,
+  },
+  botaoCabecalho: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.06)',
   },
   saudacao: {
     fontFamily: FONTES.regular,
