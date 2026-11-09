@@ -71,6 +71,7 @@ function transacoesFake(saldoCentavos: number): TransacaoRepository {
     listarPagina: jest.fn(async () => []),
     gastosPorCategoria: jest.fn(async () => ({})),
     lancarRecorrente: jest.fn(async () => true),
+    exemplosDeCategoria: jest.fn(async () => []),
     buscarPorId: jest.fn(async () => null),
     criar: jest.fn(async () => 1),
     atualizar: jest.fn(async () => {}),

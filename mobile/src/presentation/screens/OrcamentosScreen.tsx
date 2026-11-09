@@ -4,6 +4,7 @@ import {Button, Icon, Portal, Snackbar} from 'react-native-paper';
 import LinearGradient from 'react-native-linear-gradient';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
+import type {SugeridorCategoria} from '../../domain/casosDeUso/SugerirCategoria';
 import {anoMesDe, hojeISO, nomeMesAno} from '../../domain/datas';
 import {formatarCentavos} from '../../domain/dinheiro';
 import type {
@@ -28,6 +29,7 @@ interface Props {
   visivel: boolean;
   orcamentos: UseOrcamentos;
   contas: UseContasRecorrentes;
+  sugeridorCategoria?: SugeridorCategoria;
   onFechar: () => void;
 }
 
@@ -61,6 +63,7 @@ function OrcamentosScreen({
   visivel,
   orcamentos,
   contas,
+  sugeridorCategoria,
   onFechar,
 }: Props): React.JSX.Element {
   const insets = useSafeAreaInsets();
@@ -370,6 +373,7 @@ function OrcamentosScreen({
         onFechar={fecharFormConta}
         onSalvar={salvarConta}
         onExcluir={excluirConta}
+        sugeridorCategoria={sugeridorCategoria}
       />
     </Modal>
   );

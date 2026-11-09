@@ -25,6 +25,7 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {categoriasDo} from '../../domain/categorias';
 import {validarImagemComprovante} from '../../domain/comprovante';
 import type {LerRecibo} from '../../domain/casosDeUso/LerRecibo';
+import type {SugeridorCategoria} from '../../domain/casosDeUso/SugerirCategoria';
 import {
   dataISOValida,
   formatarCabecalhoDia,
@@ -51,6 +52,7 @@ import {
   validarTransacao,
   type ErrosTransacao,
 } from '../../domain/validacao/validarTransacao';
+import {useCategoriaSugerida} from '../hooks/useSugestaoCategoria';
 import {lerReciboPadrao} from '../servicos/leitorRecibo';
 import {seletorDataPadrao, type SeletorData} from '../servicos/seletorData';
 import {
@@ -77,6 +79,7 @@ interface Props {
   seletorImagem?: SeletorImagem;
   seletorData?: SeletorData;
   lerRecibo?: Pick<LerRecibo, 'ler'>;
+  sugeridorCategoria?: SugeridorCategoria;
 }
 
 interface CamposAntesDoRecibo {
@@ -126,6 +129,7 @@ function NovoLancamentoSheet({
   seletorImagem = seletorImagemPadrao,
   seletorData = seletorDataPadrao,
   lerRecibo = lerReciboPadrao,
+  sugeridorCategoria,
 }: Props): React.JSX.Element {
   const emEdicao = Boolean(transacao);
   const insets = useSafeAreaInsets();
@@ -134,6 +138,8 @@ function NovoLancamentoSheet({
   const [valor, setValor] = useState('');
   const [recorrencia, setRecorrencia] = useState<Recorrencia>('variavel');
   const [categoria, setCategoria] = useState<string | null>(null);
+  // Escolhida pela pessoa (ou já salva): a sugestão automática não mexe mais.
+  const [categoriaManual, setCategoriaManual] = useState(false);
   const [descricao, setDescricao] = useState('');
   const [erros, setErros] = useState<ErrosTransacao>({});
   const [salvando, setSalvando] = useState(false);
@@ -159,6 +165,7 @@ function NovoLancamentoSheet({
     setValor(transacao ? centavosParaDigitado(transacao.valorCentavos) : '');
     setRecorrencia(transacao?.recorrencia ?? 'variavel');
     setCategoria(transacao?.categoria ?? null);
+    setCategoriaManual(Boolean(transacao));
     setDescricao(transacao?.descricao ?? '');
     setData(transacao?.data ?? hojeISO());
     setLendoRecibo(false);
@@ -175,6 +182,26 @@ function NovoLancamentoSheet({
     setVisualizando(false);
     setAlerta(null);
   }, [visivel, transacao]);
+
+  const categoriaSugerida = useCategoriaSugerida(
+    sugeridorCategoria,
+    descricao,
+    visivel && tipo === 'despesa',
+    categoriaManual,
+    setCategoria,
+  );
+
+  useEffect(() => {
+    if (visivel) {
+      sugeridorCategoria?.preparar();
+    }
+  }, [visivel, sugeridorCategoria]);
+
+  useEffect(() => {
+    if (categoriaSugerida) {
+      setErros(({categoria: _, ...resto}) => resto);
+    }
+  }, [categoriaSugerida]);
 
   const ocupado = salvando || excluindo || lendoRecibo;
   const hoje = hojeISO();
@@ -672,17 +699,24 @@ function NovoLancamentoSheet({
                   contentContainerStyle={styles.linhaCategorias}>
                   {categorias.map(item => {
                     const selecionada = categoria === item.id;
+                    const sugerida =
+                      selecionada && categoriaSugerida === item.id;
                     return (
                       <Pressable
                         key={item.id}
                         onPress={() => {
                           setCategoria(item.id);
+                          setCategoriaManual(true);
                           setErros(({categoria: _, ...resto}) => resto);
                         }}
                         disabled={ocupado}
                         accessibilityRole="radio"
                         accessibilityState={{checked: selecionada}}
-                        accessibilityLabel={item.label}
+                        accessibilityLabel={
+                          sugerida
+                            ? `${item.label}, sugerida automaticamente`
+                            : item.label
+                        }
                         testID={`categoria-${item.id}`}
                         style={[
                           styles.categoria,
@@ -703,6 +737,13 @@ function NovoLancamentoSheet({
                           ]}>
                           {item.label}
                         </Text>
+                        {sugerida && (
+                          <Text
+                            style={styles.seloSugerida}
+                            testID={`selo-sugerida-${item.id}`}>
+                            ✨ Sugerida
+                          </Text>
+                        )}
                       </Pressable>
                     );
                   })}
@@ -1035,6 +1076,11 @@ const styles = StyleSheet.create({
     fontFamily: FONTES.monoExtraNegrito,
     fontSize: 44,
     letterSpacing: -0.9,
+  },
+  seloSugerida: {
+    fontFamily: FONTES.seminegrito,
+    fontSize: 10,
+    color: CORES.verde,
   },
   blocoRecibo: {
     gap: 8,

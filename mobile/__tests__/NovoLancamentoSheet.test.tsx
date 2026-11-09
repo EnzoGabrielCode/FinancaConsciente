@@ -25,6 +25,7 @@ import type {TransacaoRepository} from '../src/domain/repositories/TransacaoRepo
 import AlertaDuplicataDialog from '../src/presentation/components/AlertaDuplicataDialog';
 import NovoLancamentoSheet from '../src/presentation/components/NovoLancamentoSheet';
 import type {LerRecibo} from '../src/domain/casosDeUso/LerRecibo';
+import {SugerirCategoria} from '../src/domain/casosDeUso/SugerirCategoria';
 import type {SeletorData} from '../src/presentation/servicos/seletorData';
 import type {ContaRecorrenteRepository} from '../src/domain/repositories/ContaRecorrenteRepository';
 import type {Notificador} from '../src/domain/repositories/Notificador';
@@ -53,6 +54,12 @@ class RepositorioEmMemoria implements TransacaoRepository {
   );
 
   lancarRecorrente = jest.fn(async () => true);
+
+  exemplosDeCategoria = jest.fn(async () =>
+    this.transacoes
+      .filter(t => t.tipo === 'despesa' && t.categoria !== 'outros')
+      .map(({descricao, categoria}) => ({descricao, categoria})),
+  );
 
   gastosPorCategoria = jest.fn(async (anoMes: string) => {
     const gastos: Record<string, number> = {};
@@ -1385,6 +1392,287 @@ describe('NovoLancamentoSheet: data e recibo', () => {
       expect(textoDe(porId('valor-display'))).toBe('0,00');
       expect(existe('aviso-recibo')).toBe(false);
     });
+  });
+});
+
+describe('NovoLancamentoSheet: categoria sugerida', () => {
+  let onSalvar: jest.Mock<(dados: DadosTransacao) => Promise<void>>;
+  let sugeridor: SugerirCategoria;
+  let ler: jest.Mock<LerRecibo['ler']>;
+
+  beforeEach(() => {
+    jest.useFakeTimers();
+    seletor = criarSeletorFake();
+    onSalvar = jest.fn(async () => {});
+    sugeridor = new SugerirCategoria(new RepositorioEmMemoria());
+    ler = jest.fn<LerRecibo['ler']>(async () => ({
+      valorCentavos: 2590,
+      data: null,
+      estabelecimento: 'Drogasil',
+    }));
+  });
+
+  afterEach(async () => {
+    await act(async () => {
+      jest.runOnlyPendingTimers();
+      tree.unmount();
+    });
+    jest.useRealTimers();
+  });
+
+  async function abrir(transacao: Transacao | null = null) {
+    await act(async () => {
+      tree = renderer.create(
+        <PaperProvider theme={darkTheme}>
+          <NovoLancamentoSheet
+            visivel
+            transacao={transacao}
+            onFechar={() => {}}
+            onSalvar={onSalvar}
+            seletorImagem={seletor}
+            lerRecibo={{ler}}
+            sugeridorCategoria={sugeridor}
+          />
+        </PaperProvider>,
+      );
+    });
+  }
+
+  const chip = (id: string) =>
+    tree.root.findAll(
+      no =>
+        no.props.testID === `categoria-${id}` &&
+        no.props.accessibilityRole === 'radio',
+    )[0];
+  const marcada = (id: string) => chip(id).props.accessibilityState.checked;
+  const temSelo = (id: string) => existe(`selo-sugerida-${id}`);
+
+  async function escrever(texto: string) {
+    await act(async () => {
+      tree.root
+        .findAll(
+          no =>
+            no.props.testID === 'descricao-input' &&
+            typeof no.props.onChangeText === 'function',
+        )[0]
+        .props.onChangeText(texto);
+    });
+  }
+
+  const esperarSugestao = () =>
+    act(async () => {
+      jest.advanceTimersByTime(250);
+    });
+
+  it('digitar "uber" seleciona Transporte com o selo', async () => {
+    await abrir();
+    await escrever('uber');
+    expect(marcada('transporte')).toBe(false);
+
+    await esperarSugestao();
+
+    expect(marcada('transporte')).toBe(true);
+    expect(temSelo('transporte')).toBe(true);
+    expect(textoDe(porId('selo-sugerida-transporte'))).toBe('✨ Sugerida');
+    expect(chip('transporte').props.accessibilityLabel).toBe(
+      'Transporte, sugerida automaticamente',
+    );
+  });
+
+  it('espera a pessoa parar de digitar', async () => {
+    await abrir();
+    await escrever('ub');
+    await act(async () => {
+      jest.advanceTimersByTime(200);
+    });
+    await escrever('uber');
+    await act(async () => {
+      jest.advanceTimersByTime(200);
+    });
+    expect(marcada('transporte')).toBe(false);
+
+    await act(async () => {
+      jest.advanceTimersByTime(50);
+    });
+    expect(marcada('transporte')).toBe(true);
+  });
+
+  it('troca a sugestão conforme a descrição e limpa se ela some', async () => {
+    await abrir();
+    await escrever('uber');
+    await esperarSugestao();
+    await escrever('netflix');
+    await esperarSugestao();
+
+    expect(marcada('lazer')).toBe(true);
+    expect(marcada('transporte')).toBe(false);
+
+    await escrever('');
+    await esperarSugestao();
+
+    expect(marcada('lazer')).toBe(false);
+    expect(temSelo('lazer')).toBe(false);
+  });
+
+  it('tocar em outra categoria tira o selo e digitar mais não muda', async () => {
+    await abrir();
+    await escrever('uber');
+    await esperarSugestao();
+
+    await tocar('categoria-lazer');
+    expect(marcada('lazer')).toBe(true);
+    expect(temSelo('lazer')).toBe(false);
+    expect(temSelo('transporte')).toBe(false);
+
+    await escrever('uber pro aeroporto');
+    await esperarSugestao();
+    expect(marcada('lazer')).toBe(true);
+    expect(chip('lazer').props.accessibilityLabel).toBe('Lazer');
+  });
+
+  it('confirmar a sugestão no chip também a torna manual', async () => {
+    await abrir();
+    await escrever('uber');
+    await esperarSugestao();
+    await tocar('categoria-transporte');
+
+    expect(temSelo('transporte')).toBe(false);
+    await escrever('');
+    await esperarSugestao();
+    expect(marcada('transporte')).toBe(true);
+  });
+
+  it('na edição não troca a categoria salva', async () => {
+    await abrir({...despesa, descricao: 'Uber', categoria: 'lazer'});
+    await esperarSugestao();
+    await escrever('uber aeroporto');
+    await esperarSugestao();
+
+    expect(marcada('lazer')).toBe(true);
+    expect(marcada('transporte')).toBe(false);
+  });
+
+  it('receita não sugere', async () => {
+    await abrir();
+    await tocar('tipo-receita');
+    await escrever('uber');
+    await esperarSugestao();
+
+    expect(existe('selo-sugerida-transporte')).toBe(false);
+    expect(
+      tree.root.findAll(
+        no =>
+          no.props.accessibilityRole === 'radio' &&
+          no.props.accessibilityState?.checked === true &&
+          String(no.props.testID).startsWith('categoria-'),
+      ),
+    ).toHaveLength(0);
+  });
+
+  it('a descrição vinda do OCR também sugere', async () => {
+    await abrir();
+    await tocar('botao-escanear-recibo');
+    await tocar('menu-recibo-galeria');
+    await esperarSugestao();
+
+    expect(marcada('saude')).toBe(true);
+    expect(temSelo('saude')).toBe(true);
+
+    await tocar('categoria-alimentacao');
+    await tocar('botao-salvar');
+    expect(onSalvar).toHaveBeenCalledWith(
+      expect.objectContaining({
+        descricao: 'Drogasil',
+        categoria: 'alimentacao',
+      }),
+    );
+  });
+
+  it('salva com a categoria sugerida', async () => {
+    await abrir();
+    await digitar('3', '0');
+    await escrever('Netflix');
+    await esperarSugestao();
+    await tocar('botao-salvar');
+
+    expect(onSalvar).toHaveBeenCalledWith(
+      expect.objectContaining({categoria: 'lazer', descricao: 'Netflix'}),
+    );
+  });
+
+  it('prepara o modelo ao abrir', async () => {
+    const preparar = jest.spyOn(sugeridor, 'preparar');
+    await abrir();
+    expect(preparar).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('HomeScreen: categoria aprende com o histórico', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    armazenamento = new ArmazenamentoFake();
+    cofresRepo = new CofresEmMemoria();
+    seletor = criarSeletorFake();
+  });
+
+  afterEach(async () => {
+    await act(async () => {
+      jest.runOnlyPendingTimers();
+      tree.unmount();
+    });
+    jest.useRealTimers();
+  });
+
+  // Valores diferentes: o mesmo valor no mesmo dia abriria o alerta de duplicata.
+  async function lancar(descricao: string, ...valor: string[]) {
+    await tocar('botao-novo-lancamento');
+    await digitar(...valor);
+    await act(async () => {
+      tree.root
+        .findAll(
+          no =>
+            no.props.testID === 'descricao-input' &&
+            typeof no.props.onChangeText === 'function',
+        )[0]
+        .props.onChangeText(descricao);
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(250);
+    });
+  }
+
+  const selecionada = () =>
+    tree.root
+      .findAll(
+        no =>
+          no.props.accessibilityRole === 'radio' &&
+          no.props.accessibilityState?.checked === true &&
+          String(no.props.testID).startsWith('categoria-'),
+      )
+      .map(no => no.props.testID)[0];
+
+  it('depois de salvar "Academia Smart Fit" como Saúde, passa a sugerir Saúde', async () => {
+    const repositorio = new RepositorioEmMemoria();
+    await renderizar(repositorio);
+
+    await lancar('Academia Smart Fit', '9', '0');
+    expect(selecionada()).toBe('categoria-lazer');
+
+    for (const valor of ['9', '1']) {
+      if (valor === '1') {
+        await lancar('Academia Smart Fit', valor, '0');
+      }
+      await tocar('categoria-saude');
+      await tocar('botao-salvar');
+      await act(async () => {
+        jest.advanceTimersByTime(500);
+      });
+    }
+    expect(repositorio.criar).toHaveBeenCalledTimes(2);
+
+    await lancar('academia smart fit', '5');
+    expect(selecionada()).toBe('categoria-saude');
+    expect(existe('selo-sugerida-saude')).toBe(true);
   });
 });
 

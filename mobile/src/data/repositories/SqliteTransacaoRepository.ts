@@ -8,7 +8,10 @@ import type {
   TipoTransacao,
   Transacao,
 } from '../../domain/entities/Transacao';
-import type {TransacaoRepository} from '../../domain/repositories/TransacaoRepository';
+import type {
+  ExemploCategoria,
+  TransacaoRepository,
+} from '../../domain/repositories/TransacaoRepository';
 
 interface LinhaTransacao {
   id: number;
@@ -226,6 +229,22 @@ export class SqliteTransacaoRepository implements TransacaoRepository {
       gastos[linha.categoria] = Number(linha.total ?? 0);
     }
     return gastos;
+  }
+
+  async exemplosDeCategoria(limite = 500): Promise<ExemploCategoria[]> {
+    const resultado = await this.executar(
+      `SELECT descricao, categoria FROM transacoes
+        WHERE tipo = 'despesa' AND categoria <> 'outros'
+        ORDER BY data DESC, id DESC
+        LIMIT ?`,
+      [limite],
+    );
+    return linhas<ExemploCategoria>(resultado).map(
+      ({descricao, categoria}) => ({
+        descricao,
+        categoria,
+      }),
+    );
   }
 
   async buscarCandidatasDuplicata(

@@ -6,6 +6,11 @@ import type {
   Transacao,
 } from '../entities/Transacao';
 
+export interface ExemploCategoria {
+  descricao: string;
+  categoria: string;
+}
+
 export interface TransacaoRepository {
   listarRecentes(limite: number): Promise<Transacao[]>;
   listarPagina(limite: number, deslocamento: number): Promise<Transacao[]>;
@@ -17,6 +22,7 @@ export interface TransacaoRepository {
   saldoAte(dataISO: string): Promise<number>;
   totaisPorMes(deAnoMes: string, ateAnoMes: string): Promise<TotaisMes[]>;
   gastosPorCategoria(anoMes: string): Promise<Record<string, number>>;
+  exemplosDeCategoria(limite?: number): Promise<ExemploCategoria[]>;
   buscarCandidatasDuplicata(
     tipo: TipoTransacao,
     valorCentavos: number,

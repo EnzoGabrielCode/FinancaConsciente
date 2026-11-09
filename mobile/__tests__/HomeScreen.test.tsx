@@ -20,6 +20,7 @@ const repositorio: TransacaoRepository = {
   listarPagina: async () => [],
   gastosPorCategoria: async () => ({}),
   lancarRecorrente: async () => true,
+  exemplosDeCategoria: async () => [],
   buscarPorId: async () => null,
   criar: async () => 1,
   atualizar: async () => {},

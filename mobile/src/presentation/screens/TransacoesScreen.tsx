@@ -17,6 +17,7 @@ import {
 } from 'react-native-paper';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
+import type {SugeridorCategoria} from '../../domain/casosDeUso/SugerirCategoria';
 import type {DadosTransacao, Transacao} from '../../domain/entities/Transacao';
 import type {TransacaoRepository} from '../../domain/repositories/TransacaoRepository';
 import {
@@ -39,6 +40,7 @@ interface Props {
   lancamentos: UseTransacoes;
   repositorio: TransacaoRepository;
   seletorImagem?: SeletorImagem;
+  sugeridorCategoria?: SugeridorCategoria;
   onAlterado?: () => void;
   onFechar: () => void;
 }
@@ -62,6 +64,7 @@ function TransacoesScreen({
   lancamentos,
   repositorio,
   seletorImagem,
+  sugeridorCategoria,
   onAlterado,
   onFechar,
 }: Props): React.JSX.Element {
@@ -285,6 +288,7 @@ function TransacoesScreen({
         onExcluir={excluirDoSheet}
         onVerificarDuplicatas={lancamentos.verificarDuplicatas}
         seletorImagem={seletorImagem}
+        sugeridorCategoria={sugeridorCategoria}
       />
     </Modal>
   );

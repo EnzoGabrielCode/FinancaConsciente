@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import {Button, HelperText, Icon, Portal, TextInput} from 'react-native-paper';
 
+import type {SugeridorCategoria} from '../../domain/casosDeUso/SugerirCategoria';
 import {CATEGORIAS_DESPESA} from '../../domain/categorias';
 import {formatarDiaCurto, hojeISO, nomeMes} from '../../domain/datas';
 import {
@@ -31,6 +32,7 @@ import {
 } from '../../domain/recorrencia';
 import {CORES, comAlfa} from '../theme/cores';
 import {FONTES} from '../theme/fontes';
+import {useCategoriaSugerida} from '../hooks/useSugestaoCategoria';
 import {mensagemDeErro} from '../utils/mensagemDeErro';
 import ConfirmarExclusaoDialog from './ConfirmarExclusaoDialog';
 import TecladoNumerico from './TecladoNumerico';
@@ -41,6 +43,7 @@ interface Props {
   onFechar: () => void;
   onSalvar: (dados: DadosContaRecorrente) => Promise<void>;
   onExcluir: (id: number) => Promise<void>;
+  sugeridorCategoria?: SugeridorCategoria;
 }
 
 const FREQUENCIAS: {id: FrequenciaConta; rotulo: string}[] = [
@@ -111,11 +114,14 @@ function ContaRecorrenteFormSheet({
   onFechar,
   onSalvar,
   onExcluir,
+  sugeridorCategoria,
 }: Props): React.JSX.Element {
   const hoje = hojeISO();
   const [descricao, setDescricao] = useState('');
   const [valor, setValor] = useState('');
   const [categoria, setCategoria] = useState<string | null>(null);
+  // Escolhida pela pessoa (ou já salva): a sugestão automática não mexe mais.
+  const [categoriaManual, setCategoriaManual] = useState(false);
   const [frequencia, setFrequencia] = useState<FrequenciaConta>('mensal');
   const [dia, setDia] = useState(1);
   const [mes, setMes] = useState(1);
@@ -134,6 +140,7 @@ function ContaRecorrenteFormSheet({
     setDescricao(conta?.descricao ?? '');
     setValor(conta ? centavosParaDigitado(conta.valorCentavos) : '');
     setCategoria(conta?.categoria ?? null);
+    setCategoriaManual(Boolean(conta));
     setFrequencia(conta?.frequencia ?? 'mensal');
     setDia(conta?.dia ?? Number(agora.slice(8)));
     setMes(conta?.mes ?? Number(agora.slice(5, 7)));
@@ -144,6 +151,26 @@ function ContaRecorrenteFormSheet({
     setConfirmandoExclusao(false);
     setExcluindo(false);
   }, [visivel, conta]);
+
+  const categoriaSugerida = useCategoriaSugerida(
+    sugeridorCategoria,
+    descricao,
+    visivel,
+    categoriaManual,
+    setCategoria,
+  );
+
+  useEffect(() => {
+    if (visivel) {
+      sugeridorCategoria?.preparar();
+    }
+  }, [visivel, sugeridorCategoria]);
+
+  useEffect(() => {
+    if (categoriaSugerida) {
+      setErros(({categoria: _, ...resto}) => resto);
+    }
+  }, [categoriaSugerida]);
 
   const ocupado = salvando || excluindo;
   const valorCentavos = paraCentavos(valor);
@@ -307,17 +334,24 @@ function ContaRecorrenteFormSheet({
                   accessibilityRole="radiogroup">
                   {CATEGORIAS_DESPESA.map(item => {
                     const selecionada = categoria === item.id;
+                    const sugerida =
+                      selecionada && categoriaSugerida === item.id;
                     return (
                       <Pressable
                         key={item.id}
                         onPress={() => {
                           setCategoria(item.id);
+                          setCategoriaManual(true);
                           setErros(({categoria: _, ...resto}) => resto);
                         }}
                         disabled={ocupado}
                         accessibilityRole="radio"
                         accessibilityState={{checked: selecionada}}
-                        accessibilityLabel={item.label}
+                        accessibilityLabel={
+                          sugerida
+                            ? `${item.label}, sugerida automaticamente`
+                            : item.label
+                        }
                         testID={`conta-categoria-${item.id}`}
                         style={[
                           styles.chip,
@@ -338,6 +372,13 @@ function ContaRecorrenteFormSheet({
                           ]}>
                           {item.label}
                         </Text>
+                        {sugerida && (
+                          <Text
+                            style={styles.seloSugerida}
+                            testID={`conta-selo-sugerida-${item.id}`}>
+                            ✨ Sugerida
+                          </Text>
+                        )}
                       </Pressable>
                     );
                   })}
@@ -597,6 +638,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'transparent',
     backgroundColor: CORES.realce,
+  },
+  seloSugerida: {
+    fontFamily: FONTES.seminegrito,
+    fontSize: 10,
+    color: CORES.verde,
   },
   chipSelecionado: {
     backgroundColor: comAlfa(CORES.verde, 0.125),

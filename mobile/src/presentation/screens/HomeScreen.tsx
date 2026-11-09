@@ -23,6 +23,7 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {DATABASE_NAME} from '../../data/database/connection';
 import {GerenciarCofres} from '../../domain/casosDeUso/GerenciarCofres';
 import {GerenciarContasRecorrentes} from '../../domain/casosDeUso/GerenciarContasRecorrentes';
+import {SugerirCategoria} from '../../domain/casosDeUso/SugerirCategoria';
 import {GerenciarOrcamentos} from '../../domain/casosDeUso/GerenciarOrcamentos';
 import {hojeISO, saudacao} from '../../domain/datas';
 import type {DadosTransacao, Transacao} from '../../domain/entities/Transacao';
@@ -118,11 +119,23 @@ function HomeScreen({
     },
     [gerenciarOrcamentos],
   );
+  const sugeridorCategoria = useMemo(
+    () => new SugerirCategoria(repositorio),
+    [repositorio],
+  );
+  // Cada despesa salva entra no histórico: o próximo preparar() aprende com ela.
+  const aoSalvarDespesa = useCallback(
+    async (categoria: string, data: string) => {
+      sugeridorCategoria.invalidar();
+      await verificarAlerta(categoria, data);
+    },
+    [sugeridorCategoria, verificarAlerta],
+  );
   const lancamentos = useTransacoes(
     repositorio,
     armazenamento,
     repositorioCofres,
-    verificarAlerta,
+    aoSalvarDespesa,
   );
   const orcamentos = useOrcamentos(gerenciarOrcamentos, lancamentos.transacoes);
   const gerenciarCofres = useMemo(
@@ -140,9 +153,9 @@ function HomeScreen({
         repositorioContas,
         repositorio,
         notificador,
-        verificarAlerta,
+        aoSalvarDespesa,
       ),
-    [repositorioContas, repositorio, notificador, verificarAlerta],
+    [repositorioContas, repositorio, notificador, aoSalvarDespesa],
   );
   const recarregarLancamentos = lancamentos.recarregar;
   const recarregarCofres = cofres.recarregar;
@@ -488,6 +501,7 @@ function HomeScreen({
         onExcluir={excluirDoSheet}
         onVerificarDuplicatas={lancamentos.verificarDuplicatas}
         seletorImagem={seletorImagem}
+        sugeridorCategoria={sugeridorCategoria}
       />
 
       <ConfirmarExclusaoDialog
@@ -510,6 +524,7 @@ function HomeScreen({
         lancamentos={lancamentos}
         repositorio={repositorio}
         seletorImagem={seletorImagem}
+        sugeridorCategoria={sugeridorCategoria}
         onAlterado={cofres.recarregar}
         onFechar={() => setTelaTransacoes(false)}
       />
@@ -518,6 +533,7 @@ function HomeScreen({
         visivel={telaOrcamentos}
         orcamentos={orcamentos}
         contas={contas}
+        sugeridorCategoria={sugeridorCategoria}
         onFechar={() => setTelaOrcamentos(false)}
       />
     </View>

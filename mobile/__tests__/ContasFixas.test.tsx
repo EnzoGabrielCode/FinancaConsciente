@@ -8,6 +8,7 @@ import renderer, {
 } from 'react-test-renderer';
 
 import {GerenciarContasRecorrentes} from '../src/domain/casosDeUso/GerenciarContasRecorrentes';
+import {SugerirCategoria} from '../src/domain/casosDeUso/SugerirCategoria';
 import {GerenciarOrcamentos} from '../src/domain/casosDeUso/GerenciarOrcamentos';
 import type {
   ContaRecorrente,
@@ -17,6 +18,7 @@ import type {ContaRecorrenteRepository} from '../src/domain/repositories/ContaRe
 import type {Notificador} from '../src/domain/repositories/Notificador';
 import type {OrcamentoRepository} from '../src/domain/repositories/OrcamentoRepository';
 import type {TransacaoRepository} from '../src/domain/repositories/TransacaoRepository';
+import ContaRecorrenteFormSheet from '../src/presentation/components/ContaRecorrenteFormSheet';
 import {useContasRecorrentes} from '../src/presentation/hooks/useContasRecorrentes';
 import {useOrcamentos} from '../src/presentation/hooks/useOrcamentos';
 import OrcamentosScreen, {
@@ -534,6 +536,78 @@ describe('Planejamento: contas fixas', () => {
 
       expect(texto('conta-form-erro')).toBe('Falha no banco');
       expect(comId('conta-form-sheet')).toHaveLength(1);
+    });
+  });
+
+  describe('categoria sugerida', () => {
+    async function abrirFormulario(existente?: ContaRecorrente) {
+      await act(async () => {
+        tree = renderer.create(
+          <PaperProvider theme={darkTheme}>
+            <ContaRecorrenteFormSheet
+              visivel
+              conta={existente ?? null}
+              onFechar={() => {}}
+              onSalvar={async () => {}}
+              onExcluir={async () => {}}
+              sugeridorCategoria={
+                new SugerirCategoria({
+                  exemplosDeCategoria: async () => [],
+                } as unknown as TransacaoRepository)
+              }
+            />
+          </PaperProvider>,
+        );
+      });
+    }
+
+    const chip = (id: string) =>
+      tree.root.findAll(
+        no =>
+          no.props.testID === `conta-categoria-${id}` &&
+          no.props.accessibilityRole === 'radio',
+      )[0];
+
+    async function escrever(descricao: string) {
+      await act(async () => {
+        interativo('conta-descricao-input', 'onChangeText').props.onChangeText(
+          descricao,
+        );
+      });
+      await act(async () => {
+        jest.advanceTimersByTime(250);
+      });
+    }
+
+    it('"Netflix" sugere Lazer com o selo', async () => {
+      await abrirFormulario();
+      await escrever('Netflix');
+
+      expect(chip('lazer').props.accessibilityState.checked).toBe(true);
+      expect(chip('lazer').props.accessibilityLabel).toBe(
+        'Lazer, sugerida automaticamente',
+      );
+      expect(texto('conta-selo-sugerida-lazer')).toBe('✨ Sugerida');
+    });
+
+    it('depois de escolher, a descrição não muda mais a categoria', async () => {
+      await abrirFormulario();
+      await escrever('Netflix');
+      await act(async () => {
+        await interativo('conta-categoria-compras').props.onPress();
+      });
+      await escrever('Netflix família');
+
+      expect(chip('compras').props.accessibilityState.checked).toBe(true);
+      expect(comId('conta-selo-sugerida-compras')).toHaveLength(0);
+    });
+
+    it('na edição mantém a categoria da conta', async () => {
+      await abrirFormulario(conta({categoria: 'compras'}));
+      await escrever('Netflix');
+
+      expect(chip('compras').props.accessibilityState.checked).toBe(true);
+      expect(chip('lazer').props.accessibilityState.checked).toBe(false);
     });
   });
 });
